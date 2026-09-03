@@ -6,3 +6,6 @@ psycopg2-binary
 pytesseract
 Pillow
 python-multipart
+opencv-python-headless
+imutils
+numpy
