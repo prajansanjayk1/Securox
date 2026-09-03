@@ -29,7 +29,6 @@ build/
 
 # Binaries & Executables
 backend/bin/
-**/bin/
 *.exe
 
 # OS generated
