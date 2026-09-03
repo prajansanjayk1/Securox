@@ -66,7 +66,7 @@ class MimicEdLoader:
                             self.stats["high_acuity_esi_1_2"] = int((df_triage["acuity"] <= 2).sum())
                             self.stats["moderate_acuity_esi_3"] = int((df_triage["acuity"] == 3).sum())
                             self.stats["low_acuity_esi_4_5"] = int((df_triage["acuity"] >= 4).sum())
-                            self.stats["mean_heartrate"] = float(round(df_triage["heartrate"].mean(), 1)) if not df_triage["heartrate"].isna().all() else 83.2
+                            self.stats["mean_heartrate"] = float(round(df_triage["heartrate"].mean(), 1)) if not df_triage["heartrate"].isna().all() else None
 
                 # 3. Pyxis Automated Medication Dispensing Cabinets
                 if "mimic-iv-ed-demo-2.2/ed/pyxis.csv.gz" in z.namelist():

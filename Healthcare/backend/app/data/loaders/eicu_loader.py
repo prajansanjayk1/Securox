@@ -53,8 +53,8 @@ class EicuLoader:
                                 df_vit = pd.read_csv(gf, nrows=5000)
                                 self.vital_periodic_sample = sanitizer.clean_records(df_vit, 50)
                                 self.stats["bedside_monitor_features"] = [c for c in df_vit.columns if c not in ["patientunitstayid", "observationoffset"]]
-                                self.stats["mean_icu_heartrate"] = float(round(df_vit["heartrate"].mean(), 1)) if "heartrate" in df_vit.columns and not df_vit["heartrate"].isna().all() else 84.5
-                                self.stats["mean_sao2"] = float(round(df_vit["sao2"].mean(), 1)) if "sao2" in df_vit.columns and not df_vit["sao2"].isna().all() else 97.4
+                                self.stats["mean_icu_heartrate"] = float(round(df_vit["heartrate"].mean(), 1)) if "heartrate" in df_vit.columns and not df_vit["heartrate"].isna().all() else None
+                                self.stats["mean_sao2"] = float(round(df_vit["sao2"].mean(), 1)) if "sao2" in df_vit.columns and not df_vit["sao2"].isna().all() else None
 
                 # 2. Mechanical Ventilator Telemetry (respiratoryCharting)
                 for n in names:

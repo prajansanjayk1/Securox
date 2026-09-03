@@ -22,8 +22,18 @@ export const api = {
   getRisk: () => apiClient.get('/risk'),
   getEvidence: (tableName, limit = 6) => apiClient.get('/evidence', { params: { table_name: tableName, limit } }),
   getDatasets: () => apiClient.get('/datasets'),
-  executeResponse: (assetId, actionType, operatorNotes = null) =>
-    apiClient.post('/response', { asset_id: assetId, action_type: actionType, operator_notes: operatorNotes })
+  getDataCoverage: () => apiClient.get('/coverage'),
+  getIncidents: () => apiClient.get('/incidents'),
+  getIncidentDetail: (id) => apiClient.get(`/incidents/${id}`),
+  advanceIncidentStage: (id, newStage, notes = null) =>
+    apiClient.post(`/incidents/${id}/stage`, { new_stage: newStage, notes }),
+  executeResponse: (assetId, actionType, operatorNotes = null, incidentId = null) =>
+    apiClient.post('/response', {
+      asset_id: assetId,
+      action_type: actionType,
+      operator_notes: operatorNotes,
+      incident_id: incidentId
+    })
 };
 
 export default api;

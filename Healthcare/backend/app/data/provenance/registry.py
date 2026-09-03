@@ -4,7 +4,7 @@ Enforces transparency and data lineage across all ingested organic datasets.
 Zero Synthetic Data Policy.
 """
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 DATASET_PROVENANCE_REGISTRY: Dict[str, Dict[str, Any]] = {
     "MIMIC_IV_ED": {
@@ -99,18 +99,78 @@ DATASET_PROVENANCE_REGISTRY: Dict[str, Dict[str, Any]] = {
     }
 }
 
+DATA_COVERAGE_MATRIX = {
+    "clinical_workflows": {
+        "status": "AVAILABLE",
+        "coverage": "FULL",
+        "derivation": "DATA_DERIVED",
+        "source": "MIMIC-IV Clinical Database v2.2 & MIMIC-IV-ED v2.2",
+        "description": "Provider orders (POE), medication administration (eMAR/BCMA), ED triage, and Pyxis dispensing transactions."
+    },
+    "icu_physiological_telemetry": {
+        "status": "AVAILABLE",
+        "coverage": "FULL",
+        "derivation": "DATA_DERIVED",
+        "source": "eICU Collaborative Research Database v2.0.1",
+        "description": "High-frequency periodic vital signs (HR, SaO2, NIBP), mechanical ventilator parameters, and infusion rates across multicenter ICU units."
+    },
+    "health_it_infrastructure": {
+        "status": "AVAILABLE",
+        "coverage": "FULL",
+        "derivation": "DATA_DERIVED",
+        "source": "U.S. ONC Health IT Certified Technology & API Marketplace Datasets",
+        "description": "Certified EHR developer profiles, SMART-on-FHIR public endpoint linkages, and hospital interoperability metrics."
+    },
+    "network_packet_telemetry": {
+        "status": "NOT_AVAILABLE",
+        "coverage": "NONE",
+        "derivation": "NOT_AVAILABLE",
+        "source": None,
+        "description": "Raw PCAP network traces, NetFlow/IPFIX, and switch port spans are absent in public HIPAA-deidentified clinical repositories.",
+        "impact": "Network compromise and packet-level intrusions cannot be directly observed; anomalies are inferred from operational time-series deviations."
+    },
+    "iomt_physical_hardware_inventory": {
+        "status": "NOT_AVAILABLE",
+        "coverage": "NONE",
+        "derivation": "NOT_AVAILABLE",
+        "source": None,
+        "description": "Physical MAC addresses, device serial numbers, and switch VLAN assignments are excluded from deidentified medical records.",
+        "impact": "Telemetry is monitored at the clinical stream level; physical asset counts are not fabricated."
+    }
+}
+
 class ProvenanceLedger:
+    @staticmethod
+    def wrap_field(value: Any, derivation: str, source: Optional[str] = None, note: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Creates a defensible field-level provenance descriptor.
+        Derivations: DATA_DERIVED | INFERRED | REFERENCE | NOT_AVAILABLE
+        """
+        return {
+            "value": value,
+            "derivation": derivation,
+            "source": source,
+            "note": note
+        }
+
     @staticmethod
     def get_provenance_summary() -> Dict[str, Any]:
         return {
             "policy": "VERIFIED_CLINICAL_DATA_POLICY",
             "guarantee": "All operational metrics, telemetry, and pathways are derived strictly from authentic healthcare records.",
+            "data_coverage": DATA_COVERAGE_MATRIX,
+            "overall_observability_confidence": "MEDIUM",
+            "confidence_rationale": "Clinical and ICU parameters are fully authentic; network-level packet capture telemetry is not available.",
             "registered_datasets": DATASET_PROVENANCE_REGISTRY
         }
 
     @staticmethod
     def get_dataset(dataset_id: str) -> Dict[str, Any]:
         return DATASET_PROVENANCE_REGISTRY.get(dataset_id, {})
+
+    @staticmethod
+    def get_data_coverage() -> Dict[str, Any]:
+        return DATA_COVERAGE_MATRIX
 
 provenance_ledger = ProvenanceLedger()
 

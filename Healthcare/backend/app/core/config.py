@@ -16,13 +16,12 @@ class Settings(BaseModel):
         str(Path(__file__).resolve().parent.parent.parent.parent / "datasets")
     )
     
-    # CORS Configuration
+    # CORS Configuration — Explicit Local and Staging Frontend Origins
     CORS_ORIGINS: List[str] = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "*"
+        "http://127.0.0.1:3000"
     ]
     
     # Zero Synthetic Data Policy Flag

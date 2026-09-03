@@ -117,7 +117,7 @@ def test_explainable_risk_engine():
 
 def test_iomt_devices_engine():
     overview = iomt_device_engine.get_device_overview()
-    assert overview["total_connected_medical_devices"] > 0
+    assert overview["total_connected_medical_devices"]["derivation"] == "NOT_AVAILABLE"
     assert len(overview["categories"]) == 3
 
 def test_health_it_engine():
@@ -169,11 +169,17 @@ def test_api_rest_endpoints():
     r_datasets = client.get("/api/datasets")
     assert r_datasets.status_code == 200
 
+    r_coverage = client.get("/api/coverage")
+    assert r_coverage.status_code == 200
+
+    r_incidents = client.get("/api/incidents")
+    assert r_incidents.status_code == 200
+
     # Response action
     r_resp = client.post("/api/response", json={
         "asset_id": "EHR_CORE_GATEWAY",
         "action_type": "RESTRICT_FHIR_API"
     })
     assert r_resp.status_code == 200
-    assert r_resp.json()["status"] == "SAFEGUARD_ENFORCED"
+    assert r_resp.json()["status"] == "LOGGED_INTENT"
 

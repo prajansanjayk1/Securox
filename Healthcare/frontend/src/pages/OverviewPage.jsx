@@ -110,6 +110,60 @@ export const OverviewPage = ({ overview, risk, threats, exposures, onNavigate, o
         )}
       </div>
 
+      {/* Data Observability & Observational Boundaries Card */}
+      <div className="p-4 rounded-xl bg-[#0B1528] border border-slate-800 space-y-3 shadow-md text-xs font-mono">
+        <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-white uppercase tracking-wider text-[11px]">Data Observability &amp; Coverage Boundaries</span>
+          </div>
+          <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+            Observability Confidence: MEDIUM
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-[11px]">
+          <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800/80 space-y-1">
+            <div className="text-slate-400 font-bold">Clinical Workflows</div>
+            <div className="text-emerald-400 font-bold flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" /> AVAILABLE
+            </div>
+            <div className="text-[10px] text-slate-500">MIMIC-IV Clinical &amp; ED</div>
+          </div>
+
+          <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800/80 space-y-1">
+            <div className="text-slate-400 font-bold">ICU Telemetry</div>
+            <div className="text-emerald-400 font-bold flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" /> AVAILABLE
+            </div>
+            <div className="text-[10px] text-slate-500">eICU CRD Multicenter</div>
+          </div>
+
+          <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800/80 space-y-1">
+            <div className="text-slate-400 font-bold">Health-IT / EHR</div>
+            <div className="text-emerald-400 font-bold flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" /> AVAILABLE
+            </div>
+            <div className="text-[10px] text-slate-500">U.S. ONC Certified Data</div>
+          </div>
+
+          <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800/80 space-y-1">
+            <div className="text-slate-400 font-bold">Network Packets</div>
+            <div className="text-amber-400 font-bold flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3" /> NOT AVAILABLE
+            </div>
+            <div className="text-[10px] text-slate-500">PCAP Absent in Deidentified Data</div>
+          </div>
+
+          <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800/80 space-y-1">
+            <div className="text-slate-400 font-bold">Device Hardware</div>
+            <div className="text-amber-400 font-bold flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3" /> NOT AVAILABLE
+            </div>
+            <div className="text-[10px] text-slate-500">Physical MAC/Serials Excluded</div>
+          </div>
+        </div>
+      </div>
+
       {/* Operational Advisory Alert */}
       {overview && (
         <div className="p-4 rounded-xl bg-rose-950/30 border border-rose-500/30 flex items-start gap-3">

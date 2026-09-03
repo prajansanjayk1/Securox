@@ -65,6 +65,10 @@ def root():
         "docs_url": "/docs"
     }
 
+@app.get("/health")
+def root_health():
+    return {"status": "UP", "service": settings.PROJECT_NAME, "healthy": True}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=True)

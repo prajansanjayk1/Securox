@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, Radio, AlertTriangle, CheckCircle2, ShieldAlert, Cpu } from 'lucide-react';
+import { Activity, Radio, AlertTriangle, CheckCircle2, ShieldAlert, Cpu, Info } from 'lucide-react';
 
 export const MedicalDevicesPage = ({ devices }) => {
   const categories = devices?.categories || [];
@@ -12,15 +12,26 @@ export const MedicalDevicesPage = ({ devices }) => {
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold font-mono text-white flex items-center gap-2">
             <Activity className="w-5 h-5 text-teal-400" />
-            <span>Connected Medical Device (IoMT) Telemetry &amp; Security</span>
+            <span>Clinical Medical Telemetry (IoMT) Parameter Streams</span>
           </h2>
-          <span className="text-[11px] font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/30">
-            {devices?.total_connected_medical_devices || 80} Monitored Devices
+          <span className="text-[11px] font-mono text-teal-400 bg-teal-500/10 px-2.5 py-1 rounded-lg border border-teal-500/30">
+            {devices?.monitored_telemetry_categories || 3} Monitored Telemetry Streams
           </span>
         </div>
         <p className="text-xs text-slate-400 font-sans mt-1">
-          Real-time physiological telemetry, mechanical ventilator feeds, and smart infusion pump monitoring grounded in eICU and MIMIC-IV clinical records.
+          Surveillance of physiological telemetry, mechanical ventilator settings, and smart infusion delivery grounded in authentic eICU and MIMIC-IV clinical records.
         </p>
+      </div>
+
+      {/* Observational Boundary Notice */}
+      <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs font-mono flex items-start gap-2.5 text-slate-300">
+        <Info className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
+        <div className="space-y-0.5">
+          <strong className="text-white uppercase tracking-wider block text-[11px]">Hardware Inventory Observability Boundary</strong>
+          <span className="text-slate-400 font-sans leading-relaxed text-[11px]">
+            Under HIPAA Safe Harbor deidentification, physical hardware MAC addresses, asset tags, and IP switch telemetry are absent from source research archives. CAREGUARD monitors genuine patient clinical telemetry parameter streams without inventing fabricated device counts.
+          </span>
+        </div>
       </div>
 
       {/* Categories Grid */}
@@ -43,8 +54,14 @@ export const MedicalDevicesPage = ({ devices }) => {
                     {cat.operational_status}
                   </span>
                 </div>
-                <div className="text-xs font-mono text-slate-400 mt-0.5">
-                  Protocol: {cat.protocol} | Monitored Units: {cat.device_count_monitored}
+                <div className="text-xs font-mono text-slate-400 mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                  <span>Protocol: <strong className="text-slate-200">{cat.protocol}</strong></span>
+                  <span>
+                    Observed Units: <strong className="text-teal-300">{cat.observed_telemetry_streams?.value} {cat.observed_telemetry_streams?.unit}</strong>
+                  </span>
+                  <span className="text-amber-400/90">
+                    Hardware Counts: <strong className="text-amber-300">NOT AVAILABLE (Deidentified)</strong>
+                  </span>
                 </div>
               </div>
 
@@ -63,7 +80,7 @@ export const MedicalDevicesPage = ({ devices }) => {
                 cat.operational_status === 'TELEMETRY_ANOMALY_DETECTED' ? 'text-rose-400' : 'text-emerald-400'
               }`} />
               <div>
-                <strong className="text-white">Device Security Advisory: </strong>
+                <strong className="text-white">Clinical Continuity Advisory: </strong>
                 {cat.security_advisory}
               </div>
             </div>
@@ -71,7 +88,7 @@ export const MedicalDevicesPage = ({ devices }) => {
             {/* Live Telemetry Parameters */}
             <div className="space-y-1.5">
               <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 block">
-                Primary Monitored Clinical Telemetry Parameters
+                Monitored Physiological Telemetry Parameters
               </span>
               <div className="flex flex-wrap gap-2">
                 {cat.primary_telemetry_parameters.map((p, i) => (
@@ -89,7 +106,7 @@ export const MedicalDevicesPage = ({ devices }) => {
             {cat.sample_live_records && cat.sample_live_records.length > 0 && (
               <div className="p-3 rounded-xl bg-black/50 border border-slate-800 space-y-1">
                 <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">
-                  Authentic Real-Time Record Sample (Zero Synthetic Telemetry)
+                  Authentic Real-Time Record Sample (eICU Clinical Telemetry)
                 </span>
                 <pre className="p-2.5 rounded-lg bg-black/60 text-[10px] font-mono text-emerald-300/90 overflow-x-auto leading-relaxed">
                   {JSON.stringify(cat.sample_live_records[0], null, 2)}
@@ -103,4 +120,3 @@ export const MedicalDevicesPage = ({ devices }) => {
     </div>
   );
 };
-

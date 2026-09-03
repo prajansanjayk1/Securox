@@ -16,6 +16,7 @@ from app.healthcare.blast_radius import blast_radius_engine
 from app.healthcare.risk.engine import healthcare_risk_engine
 from app.healthcare.devices.iomt_engine import iomt_device_engine
 from app.healthcare.health_it.engine import health_it_engine
+from app.healthcare.incidents.lifecycle import incident_lifecycle_manager
 from app.data.provenance.registry import provenance_ledger
 from app.data.loaders.mimic_ed_loader import mimic_ed_loader
 from app.data.loaders.mimic_clinical_loader import mimic_clinical_loader
@@ -29,6 +30,38 @@ class ResponseActionRequest(BaseModel):
     asset_id: str
     action_type: str
     operator_notes: Optional[str] = None
+    incident_id: Optional[str] = None
+
+@router.get("/health")
+def get_health():
+    return {
+        "status": "UP",
+        "healthy": True,
+        "service": "CAREGUARD",
+        "version": "1.0.0",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "datasets": {
+            "mimic_ed": mimic_ed_loader._loaded,
+            "mimic_clinical": mimic_clinical_loader._loaded,
+            "eicu": eicu_loader._loaded,
+            "onc": onc_loader._loaded
+        }
+    }
+
+@router.get("/infrastructure/status")
+def get_infrastructure_status():
+    assets = dependency_graph_service.get_all_assets()
+    exposures = operational_exposure_engine.calculate_exposures()
+    online_count = sum(1 for a in assets if a.get("operational_status") == "ONLINE")
+    return {
+        "status": "OPERATIONAL",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "total_digital_assets": len(assets),
+        "online_digital_assets": online_count,
+        "infrastructure_health": "NOMINAL" if online_count == len(assets) else "DEGRADED",
+        "assets": assets,
+        "operational_pathways_monitored": len(exposures)
+    }
 
 @router.get("/overview")
 def get_overview():
@@ -144,29 +177,60 @@ def get_evidence(table_name: str = Query(..., description="Target dataset table 
 def get_datasets():
     return provenance_ledger.get_provenance_summary()
 
+@router.get("/coverage")
+def get_data_coverage():
+    return provenance_ledger.get_data_coverage()
+
+# -----------------------------------------------------------------------------
+# Incident Lifecycle & Honest Response Endpoints
+# -----------------------------------------------------------------------------
+class AdvanceStageRequest(BaseModel):
+    new_stage: str
+    notes: Optional[str] = None
+
+@router.get("/incidents")
+def get_all_incidents():
+    return incident_lifecycle_manager.get_all_incidents()
+
+@router.get("/incidents/{incident_id}")
+def get_incident(incident_id: str):
+    inc = incident_lifecycle_manager.get_incident(incident_id)
+    if not inc:
+        raise HTTPException(status_code=404, detail="Incident not found.")
+    return inc
+
+@router.post("/incidents/{incident_id}/stage")
+def advance_incident_stage(incident_id: str, req: AdvanceStageRequest):
+    try:
+        return incident_lifecycle_manager.advance_stage(incident_id, req.new_stage, req.notes)
+    except (ValueError, KeyError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @router.post("/response")
 def execute_response_action(action: ResponseActionRequest):
     asset = dependency_graph_service.get_asset(action.asset_id)
     if not asset:
         raise HTTPException(status_code=404, detail="Target asset not found.")
 
-    safeguards = {
-        "RESTRICT_FHIR_API": "Throttles external query rate while preserving emergency room bedside lookups.",
-        "OFFLINE_PYXIS_OVERRIDE": "Authorizes offline Pyxis emergency override mode; shifts to dual-nurse verification.",
-        "ISOLATE_BEDSIDE_GATEWAY": "Isolates bedside monitor LAN gateway while maintaining local hardwire acoustic alarms.",
-        "TELEPHONE_PANIC_PROTOCOL": "Directs laboratory personnel to telephone critical panic lab values directly."
-    }
-
-    safeguard_text = safeguards.get(action.action_type, "Initiates verified manual clinical continuity procedures.")
+    target_id = action.incident_id or action.asset_id
+    result = incident_lifecycle_manager.log_response(
+        incident_id=target_id,
+        action_type=action.action_type,
+        operator_notes=action.operator_notes
+    )
 
     return {
-        "status": "SAFEGUARD_ENFORCED",
+        "status": "LOGGED_INTENT",
         "asset_id": action.asset_id,
         "asset_name": asset["name"],
         "action_type": action.action_type,
-        "continuity_safeguard": safeguard_text,
         "operator_notes": action.operator_notes,
-        "enforced_at": datetime.now(timezone.utc).isoformat(),
-        "patient_safety_guarantee": "Verified: Action preserves life-critical healthcare clinical connectivity."
+        "execution_classification": "LOGGED_INTENT",
+        "environment": "RESEARCH / SIMULATED SOC (NON-PRODUCTION)",
+        "live_actuator_enforcement": False,
+        "verification": "NOT_AVAILABLE (Simulated research environment; physical hardware state change not observed)",
+        "logged_at": datetime.now(timezone.utc).isoformat(),
+        "disclaimer": "Honest Operational Response: Action logged as operator intent. Automated hardware actuation is not claimed.",
+        "incident_details": result
     }
 
