@@ -46,7 +46,13 @@ function App() {
     fetchRecentScans();
     
     // Start camera
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+    navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: "environment",
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
+      }
+    })
       .then(stream => {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -94,7 +100,7 @@ function App() {
         } else {
           reject("Failed to capture image blob");
         }
-      }, 'image/jpeg', 0.9);
+      }, 'image/png');
     });
   };
 
@@ -137,7 +143,16 @@ function App() {
       const ocrData = await ocrRes.json();
       
       const extractedPlate = ocrData.extracted_plate;
-      setOcrStatus(`OCR Extraction Complete: ${extractedPlate}`);
+      const rawText = ocrData.raw_text ? ` (${ocrData.raw_text})` : '';
+      setOcrStatus(`OCR Extraction Complete: ${extractedPlate}${rawText}`);
+
+      if (extractedPlate === 'UNKNOWN' || extractedPlate === 'ERROR') {
+        setCurrentResult({
+          status: 'ERROR',
+          message: ocrData.details || 'Could not read a valid Indian vehicle plate. Please recapture with the plate centered and well lit.'
+        });
+        return;
+      }
 
       // 3. Process Toll (Dual Factor)
       const tollRes = await fetch(`${API_URL}/process-toll`, {
@@ -151,6 +166,14 @@ function App() {
       });
       
       const tollData = await tollRes.json();
+      if (!tollRes.ok) {
+        setCurrentResult({
+          status: 'ERROR',
+          message: tollData.detail || 'Could not process toll scan.'
+        });
+        return;
+      }
+
       setCurrentResult(tollData);
       
       if (tollData.status === 'APPROVED') {
@@ -244,10 +267,14 @@ function App() {
 
       {/* Active Vehicle Status */}
       {currentResult && (
-        <div className={`status-panel ${currentResult.status === 'BLOCKED' ? 'panel-blocked' : 'panel-approved'}`}>
+        <div className={`status-panel ${currentResult.status !== 'APPROVED' ? 'panel-blocked' : 'panel-approved'}`}>
           <div className="panel-header">
-            <h3>{currentResult.status === 'BLOCKED' ? 'PAYMENT HALTED - ANOMALY DETECTED' : 'PAYMENT APPROVED'}</h3>
-            <span className={`badge badge-${currentResult.status === 'BLOCKED' ? 'high' : 'normal'}`}>
+            <h3>
+              {currentResult.status === 'APPROVED' && 'PAYMENT APPROVED'}
+              {currentResult.status === 'BLOCKED' && 'PAYMENT HALTED - ANOMALY DETECTED'}
+              {currentResult.status === 'ERROR' && 'PLATE READ FAILED'}
+            </h3>
+            <span className={`badge badge-${currentResult.status !== 'APPROVED' ? 'high' : 'normal'}`}>
               {currentResult.status}
             </span>
           </div>
