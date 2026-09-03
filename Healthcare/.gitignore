@@ -1,0 +1,117 @@
+# =============================================================================
+# CAREGUARD Healthcare Cybersecurity — Git Ignore Rules
+# =============================================================================
+
+# --- Dependencies & Package Managers ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnpm-store/
+
+# --- Build Outputs & Bundles ---
+dist/
+build/
+out/
+.vite/
+.next/
+.nuxt/
+.cache/
+
+# --- Python Environment & Bytecode ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# --- Virtual Environments ---
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# --- Testing, Coverage & Quality ---
+.pytest_cache/
+.coverage
+.coverage.*
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+htmlcov/
+.tox/
+.nox/
+
+# --- Environment Variables, Secrets & Local Configs ---
+.env
+.env.local
+.env.*.local
+*.env
+!.env.example
+
+# --- Large Healthcare Datasets & Binary Archives (>100MB / GitHub Limit) ---
+datasets/
+*.zip
+*.tar
+*.tar.gz
+*.csv.gz
+*.parquet
+*.sqlite
+*.sqlite3
+*.db
+CAREGUARD_*.zip
+
+# --- IDEs, Text Editors & Operating System ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Visual Studio Code & JetBrains
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# --- Temporary & Log Files ---
+*.log
+logs/
+*.tmp
+*.temp
+scratch/
+tmp/
+temp/
+
+# --- Legacy Modules ---
+Securox/
+Securox
+
+
