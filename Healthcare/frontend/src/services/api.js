@@ -23,6 +23,11 @@ export const api = {
   getEvidence: (tableName, limit = 6) => apiClient.get('/evidence', { params: { table_name: tableName, limit } }),
   getDatasets: () => apiClient.get('/datasets'),
   getDataCoverage: () => apiClient.get('/coverage'),
+  getCyberOverview: () => apiClient.get('/cyber/overview'),
+  getCyberDevices: () => apiClient.get('/cyber/devices'),
+  getCyberCategories: () => apiClient.get('/cyber/categories'),
+  getCyberHospitalThreats: () => apiClient.get('/cyber/hospital-threats'),
+  getCyberInventory: () => apiClient.get('/cyber/inventory'),
   getIncidents: () => apiClient.get('/incidents'),
   getIncidentDetail: (id) => apiClient.get(`/incidents/${id}`),
   advanceIncidentStage: (id, newStage, notes = null) =>

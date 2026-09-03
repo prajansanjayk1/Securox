@@ -124,3 +124,4 @@ def test_incident_lifecycle_stages():
     })
     assert adv_resp.status_code == 200
     assert adv_resp.json()["current_stage"] == "TRIAGED"
+

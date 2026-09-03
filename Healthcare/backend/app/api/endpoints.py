@@ -22,6 +22,7 @@ from app.data.loaders.mimic_ed_loader import mimic_ed_loader
 from app.data.loaders.mimic_clinical_loader import mimic_clinical_loader
 from app.data.loaders.eicu_loader import eicu_loader
 from app.data.loaders.onc_loader import onc_loader
+from app.data.loaders.cyber_loader import cyber_dataset_loader
 
 router = APIRouter()
 
@@ -180,6 +181,38 @@ def get_datasets():
 @router.get("/coverage")
 def get_data_coverage():
     return provenance_ledger.get_data_coverage()
+
+# -----------------------------------------------------------------------------
+# Authentic Cyberdatasets Ingestion & Telemetry Endpoints
+# -----------------------------------------------------------------------------
+@router.get("/cyber/overview")
+def get_cyber_overview():
+    return cyber_dataset_loader.get_summary()
+
+@router.get("/cyber/devices")
+def get_cyber_devices():
+    return {
+        "devices_count": len(cyber_dataset_loader.get_iomt_devices()),
+        "devices": cyber_dataset_loader.get_iomt_devices(),
+        "derivation": "DATA_DERIVED",
+        "source": "CICIoMT2024 Physical IoMT Device Captures (PCAP)"
+    }
+
+@router.get("/cyber/categories")
+def get_cyber_categories():
+    return cyber_dataset_loader.get_ciciomt_categories()
+
+@router.get("/cyber/hospital-threats")
+def get_cyber_hospital_threats():
+    return cyber_dataset_loader.get_hospital_threat_database()
+
+@router.get("/cyber/inventory")
+def get_cyber_inventory():
+    return {
+        "total_files": len(cyber_dataset_loader.get_file_inventory()),
+        "files": cyber_dataset_loader.get_file_inventory(),
+        "derivation": "DATA_DERIVED"
+    }
 
 # -----------------------------------------------------------------------------
 # Incident Lifecycle & Honest Response Endpoints

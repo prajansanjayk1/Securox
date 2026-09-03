@@ -73,6 +73,8 @@ htmlcov/
 
 # --- Large Healthcare Datasets & Binary Archives (>100MB / GitHub Limit) ---
 datasets/
+cyberdatasets/
+dataset/
 *.zip
 *.tar
 *.tar.gz

@@ -239,3 +239,4 @@ class IncidentLifecycleManager:
 
 
 incident_lifecycle_manager = IncidentLifecycleManager()
+

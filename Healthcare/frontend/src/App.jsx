@@ -33,6 +33,9 @@ export const App = () => {
   const [healthIt, setHealthIt] = useState(null);
   const [risk, setRisk] = useState(null);
   const [datasets, setDatasets] = useState(null);
+  const [cyberOverview, setCyberOverview] = useState(null);
+  const [cyberDevices, setCyberDevices] = useState(null);
+  const [cyberInventory, setCyberInventory] = useState(null);
 
   const loadPlatformData = async () => {
     setLoading(true);
@@ -47,7 +50,10 @@ export const App = () => {
         devicesRes,
         healthItRes,
         riskRes,
-        datasetsRes
+        datasetsRes,
+        cyberOverviewRes,
+        cyberDevicesRes,
+        cyberInventoryRes
       ] = await Promise.all([
         api.getOverview(),
         api.getThreats(),
@@ -57,7 +63,10 @@ export const App = () => {
         api.getDevices(),
         api.getHealthIT(),
         api.getRisk(),
-        api.getDatasets()
+        api.getDatasets(),
+        api.getCyberOverview(),
+        api.getCyberDevices(),
+        api.getCyberInventory()
       ]);
 
       setOverview(overviewRes.data);
@@ -69,6 +78,9 @@ export const App = () => {
       setHealthIt(healthItRes.data);
       setRisk(riskRes.data);
       setDatasets(datasetsRes.data);
+      setCyberOverview(cyberOverviewRes.data);
+      setCyberDevices(cyberDevicesRes.data);
+      setCyberInventory(cyberInventoryRes.data);
     } catch (err) {
       console.error('Failed to load CAREGUARD platform telemetry:', err);
       setError('Unable to synchronize with CAREGUARD backend service. Ensure FastAPI server is running on port 8000.');
@@ -175,6 +187,7 @@ export const App = () => {
             risk={risk}
             threats={threats}
             exposures={exposures}
+            cyberOverview={cyberOverview}
             onNavigate={(tab) => setActiveTab(tab)}
             onRefresh={loadPlatformData}
           />
@@ -216,6 +229,7 @@ export const App = () => {
         {activeTab === 'devices' && (
           <MedicalDevicesPage
             devices={devices}
+            cyberDevices={cyberDevices}
           />
         )}
 
@@ -234,6 +248,8 @@ export const App = () => {
         {activeTab === 'evidence' && (
           <EvidencePage
             datasets={datasets}
+            cyberInventory={cyberInventory}
+            cyberOverview={cyberOverview}
           />
         )}
 
