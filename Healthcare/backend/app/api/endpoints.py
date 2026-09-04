@@ -80,7 +80,7 @@ def get_overview():
         "risk_derivation": "DATA_DERIVED (NIST SP 800-30 Cascade Formulation)",
         "operational_advisory": risk["operational_advisory"],
         "active_cyber_threats_count": len(threats),
-        "active_threats_derivation": "DATA_DERIVED (8 Statistical Anomaly Events across Real Datasets)",
+        "active_threats_derivation": f"DATA_DERIVED ({len(threats)} Statistical Anomaly Events across Real Datasets)",
         "total_monitored_pathways": len(exposures),
         "pathways_derivation": "DATA_DERIVED Exposure Scoring across REFERENCE Care Pathways",
         "critical_exposure_pathways": [e["pathway_name"] for e in exposures if e["degradation_state"] == "SEVERELY DEGRADED"],
@@ -162,7 +162,8 @@ def get_evidence(table_name: str = Query(..., description="Target dataset table 
         mimic_ed_loader.get_table_records(table_name, limit) or
         mimic_clinical_loader.get_table_records(table_name, limit) or
         eicu_loader.get_table_records(table_name, limit) or
-        onc_loader.get_table_records(table_name, limit)
+        onc_loader.get_table_records(table_name, limit) or
+        cyber_dataset_loader.get_table_records(table_name, limit)
     )
     if not records:
         return {
@@ -193,6 +194,10 @@ def get_data_coverage():
 def get_cyber_overview():
     return cyber_dataset_loader.get_summary()
 
+@router.get("/cyber/accounting")
+def get_cyber_accounting():
+    return cyber_dataset_loader.get_dataset_accounting_table()
+
 @router.get("/cyber/devices")
 def get_cyber_devices():
     return {
@@ -209,6 +214,22 @@ def get_cyber_categories():
 @router.get("/cyber/hospital-threats")
 def get_cyber_hospital_threats():
     return cyber_dataset_loader.get_hospital_threat_database()
+
+@router.get("/cyber/cicids2017")
+def get_cyber_cicids2017():
+    return cyber_dataset_loader.get_cicids2017()
+
+@router.get("/cyber/csecicids2018")
+def get_cyber_csecicids2018():
+    return cyber_dataset_loader.get_csecicids2018()
+
+@router.get("/cyber/cicflowmeter")
+def get_cyber_cicflowmeter():
+    return cyber_dataset_loader.get_cicflowmeter()
+
+@router.get("/cyber/lanl-redteam")
+def get_cyber_lanl_redteam():
+    return cyber_dataset_loader.get_lanl_cyber()
 
 @router.get("/cyber/inventory")
 def get_cyber_inventory():

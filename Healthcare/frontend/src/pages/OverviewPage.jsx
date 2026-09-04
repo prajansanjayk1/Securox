@@ -131,6 +131,7 @@ export const OverviewPage = ({ overview, risk, threats, exposures, cyberOverview
       </div>
 
       {/* Authentic Cybersecurity Telemetry & Dataset Coverage Panel */}
+      {/* Authentic Cybersecurity Telemetry & Dataset Coverage Panel */}
       {cyberOverview && (
         <div className="p-5 rounded-2xl bg-[#0B1528] border border-cyan-500/30 shadow-xl space-y-4">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2 border-b border-slate-800 pb-3">
@@ -139,7 +140,7 @@ export const OverviewPage = ({ overview, risk, threats, exposures, cyberOverview
               <div>
                 <span className="text-sm font-bold font-mono text-white">Authentic Cybersecurity Dataset Telemetry (cyberdatasets/)</span>
                 <p className="text-[11px] font-sans text-slate-400">
-                  Separated by native units: Network flows (CICIoMT2024), packet frames (PCAP), and clinical impact records (Hospital Threat DB).
+                  Separated by native units: Healthcare flows (CICIoMT2024), PCAP frames, Hospital incidents, and Enterprise intrusion telemetry (CIC-IDS2017, CSE-CIC-IDS2018, CICFlowMeter, LANL).
                 </p>
               </div>
             </div>
@@ -148,7 +149,7 @@ export const OverviewPage = ({ overview, risk, threats, exposures, cyberOverview
             </span>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs font-mono">
             {/* Card 1: Healthcare Network Flows */}
             <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800 space-y-1">
               <div className="flex items-center justify-between">
@@ -200,7 +201,24 @@ export const OverviewPage = ({ overview, risk, threats, exposures, cyberOverview
               </div>
             </div>
 
-            {/* Card 4: Attack Categories */}
+            {/* Card 4: Enterprise Intrusion Telemetry */}
+            <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 text-[10px] uppercase">Enterprise Intrusion Telemetry</span>
+                <span className="text-[9px] text-purple-400 font-bold">DATA_DERIVED</span>
+              </div>
+              <div className="text-xl font-bold text-purple-300 font-mono">
+                5,640,217 <span className="text-xs font-normal text-slate-400">Flows</span>
+              </div>
+              <div className="text-[10px] text-purple-300 font-sans">
+                2.10M CIC-IDS2017 &bull; 3.54M FlowMeter &bull; 749 LANL
+              </div>
+              <div className="text-[9px] text-slate-500 font-mono">
+                CSE-CIC-IDS2018 (36 GB uncompressed)
+              </div>
+            </div>
+
+            {/* Card 5: Attack Categories */}
             <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800 space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-slate-500 text-[10px] uppercase">Attack Signatures</span>
@@ -210,7 +228,7 @@ export const OverviewPage = ({ overview, risk, threats, exposures, cyberOverview
                 {cyberOverview.ciciomt2024_attack_categories?.length || 19} Categories
               </div>
               <div className="text-[10px] text-amber-400 font-sans">
-                MQTT, BLE DoS, ARP, TCP/IP, Recon
+                MQTT, SQLi, Lateral Movement, DoS
               </div>
               <div className="text-[9px] text-slate-500 font-mono">
                 Extracted Directly from Files
@@ -401,7 +419,7 @@ export const OverviewPage = ({ overview, risk, threats, exposures, cyberOverview
                 <p className="text-[11px] text-slate-400 font-sans leading-relaxed">{th.description}</p>
                 <div className="text-[10px] text-slate-500 flex items-center justify-between pt-1">
                   <span>Target: <strong className="text-slate-300">{th.targeted_asset_id}</strong></span>
-                  <span>Confidence: <strong className="text-emerald-400">{(th.confidence_score * 100).toFixed(1)}%</strong></span>
+                  <span>Evidence: <strong className="text-emerald-400">{th.statistical_evidence?.confidence_tier || 'DATA_DERIVED'} ({th.statistical_evidence?.z_score ? `${th.statistical_evidence.z_score}σ` : 'GROUNDED'})</strong></span>
                 </div>
               </div>
             ))}

@@ -23,7 +23,11 @@ export const EvidencePage = ({ datasets, cyberInventory, cyberOverview }) => {
     { id: 'respiratoryCharting', label: 'respiratoryCharting (eICU)', dataset: 'eICU CRD Demo v2.0.1' },
     { id: 'infusiondrug', label: 'infusiondrug (eICU)', dataset: 'eICU CRD Demo v2.0.1' },
     { id: 'chpl_linkage', label: 'chpl_linkage (ONC)', dataset: 'ONC Health IT Data' },
-    { id: 'ecosystem_apps', label: 'ecosystem_apps (ONC)', dataset: 'ONC Health IT Data' }
+    { id: 'ecosystem_apps', label: 'ecosystem_apps (ONC)', dataset: 'ONC Health IT Data' },
+    { id: 'cicids2017', label: 'web_attacks_thursday (CIC-IDS2017)', dataset: 'CIC-IDS2017 Network Intrusion' },
+    { id: 'cicflowmeter', label: 'flowmeter_matrix (CICFlowMeter)', dataset: 'CICFlowMeter 84-Feature Telemetry' },
+    { id: 'lanl_redteam', label: 'lateral_movement (LANL Red Team)', dataset: 'Los Alamos National Lab Cyber Defense' },
+    { id: 'threat_database', label: 'hospital_incidents (threat_db)', dataset: 'Hospital Cyber Threat Database' }
   ];
 
   const fetchRecords = async (tableName) => {
@@ -161,9 +165,10 @@ export const EvidencePage = ({ datasets, cyberInventory, cyberOverview }) => {
                   </tbody>
                 </table>
               </div>
-              <div className="text-[10px] font-mono text-slate-500 pt-1 border-t border-slate-800/60 flex items-center justify-between">
-                <span>Healthcare Flow Check: 5,918,499 attack + 230,339 benign = 6,148,838 total flows (Exact Match)</span>
-                <span>PCAP Frames: 14,972 device + 1,532,922 gateway = 1,547,894 total frames</span>
+              <div className="text-[10px] font-mono text-slate-500 pt-1 border-t border-slate-800/60 flex flex-wrap items-center justify-between gap-2">
+                <span>Healthcare Flows: 5,918,499 attack + 230,339 benign = 6,148,838 total (Exact Match)</span>
+                <span>Enterprise Telemetry: 5,640,217 flows (CIC-IDS2017 &amp; FlowMeter) &bull; 749 LANL &bull; 36 GB CSE-CIC-IDS2018</span>
+                <span>PCAP: 14,972 device + 1,532,922 gateway = 1,547,894 frames</span>
               </div>
             </div>
           )}

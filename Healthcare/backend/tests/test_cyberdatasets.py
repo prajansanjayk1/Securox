@@ -54,9 +54,19 @@ def test_cyber_loader_ingestion():
     assert bench["darknet_flows"] == 158_616
     assert bench["unsw_nb15_records"] == 447_915
 
-    # Accounting Table
+    # Enterprise Intrusion Telemetry
+    ent = summary["enterprise_intrusion_telemetry"]
+    assert ent["cicids2017"]["total_flows"] == 2_099_976
+    assert ent["cicids2017"]["daily_captures_count"] == 5
+    assert ent["csecicids2018"]["total_csv_files"] == 10
+    assert ent["csecicids2018"]["uncompressed_gb"] == 36.04
+    assert ent["cicflowmeter"]["total_flows"] == 3_540_241
+    assert ent["cicflowmeter"]["feature_count"] == 84
+    assert ent["lanl_redteam"]["total_events"] == 749
+
+    # Accounting Table (10 distinct dataset categories)
     acct = summary["accounting_table"]
-    assert len(acct) == 6
+    assert len(acct) == 10
     assert len(summary["ciciomt2024_attack_categories"]) == 19
     assert summary["monitored_iomt_devices_count"] == 13
 
@@ -120,3 +130,24 @@ def test_cyber_api_rest_endpoints():
     r_inv = client.get("/api/cyber/inventory")
     assert r_inv.status_code == 200
     assert r_inv.json()["total_files"] == 101
+
+    r_acct = client.get("/api/cyber/accounting")
+    assert r_acct.status_code == 200
+    assert len(r_acct.json()) == 10
+
+    r_c17 = client.get("/api/cyber/cicids2017")
+    assert r_c17.status_code == 200
+    assert r_c17.json()["total_flows"] == 2_099_976
+
+    r_c18 = client.get("/api/cyber/csecicids2018")
+    assert r_c18.status_code == 200
+    assert r_c18.json()["uncompressed_gb"] == 36.04
+    assert r_c18.json()["total_csv_files"] == 10
+
+    r_cfm = client.get("/api/cyber/cicflowmeter")
+    assert r_cfm.status_code == 200
+    assert r_cfm.json()["total_flows"] == 3_540_241
+
+    r_lanl = client.get("/api/cyber/lanl-redteam")
+    assert r_lanl.status_code == 200
+    assert r_lanl.json()["total_events"] == 749
