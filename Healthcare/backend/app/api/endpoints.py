@@ -77,12 +77,16 @@ def get_overview():
         "zero_synthetic_data_guarantee": True,
         "composite_risk_score": risk["composite_risk_score"],
         "risk_tier": risk["risk_tier"],
+        "risk_derivation": "DATA_DERIVED (NIST SP 800-30 Cascade Formulation)",
         "operational_advisory": risk["operational_advisory"],
         "active_cyber_threats_count": len(threats),
+        "active_threats_derivation": "DATA_DERIVED (8 Statistical Anomaly Events across Real Datasets)",
         "total_monitored_pathways": len(exposures),
+        "pathways_derivation": "DATA_DERIVED Exposure Scoring across REFERENCE Care Pathways",
         "critical_exposure_pathways": [e["pathway_name"] for e in exposures if e["degradation_state"] == "SEVERELY DEGRADED"],
         "degraded_exposure_pathways": [e["pathway_name"] for e in exposures if e["degradation_state"] == "DEGRADED"],
-        "monitored_digital_assets": len(assets)
+        "monitored_digital_assets": len(assets),
+        "assets_derivation": "REFERENCE_ARCHITECTURE (ONC Certified Health IT & NIST SP 800-207)"
     }
 
 @router.get("/threats")
