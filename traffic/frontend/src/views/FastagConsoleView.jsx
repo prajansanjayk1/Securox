@@ -272,6 +272,8 @@ export const FastagConsoleView = () => {
   const [selectedPlaza, setSelectedPlaza] = useState("TG-01");
   const [selectedLane, setSelectedLane] = useState("LANE-01");
   const [showAnomalyModal, setShowAnomalyModal] = useState(false);
+  const [ocrProcessingTime, setOcrProcessingTime] = useState(null);
+  const [manualOverridePlate, setManualOverridePlate] = useState("");
 
   useEffect(() => {
     if (lastMessage && lastMessage.type === 'NEW_EVENT' && lastMessage.plaza_id === selectedPlaza && lastMessage.lane_id === selectedLane) {
@@ -307,11 +309,36 @@ export const FastagConsoleView = () => {
       epc_id: v.tagId,
       tag_read_status: "SUCCESS",
       read_timestamp: new Date().toISOString(),
-      reader_id: `RFID-${v.tollgate}-${v.lane}`,
-      toll_plaza_id: v.tollgate,
-      lane_id: v.lane
+      reader_id: `RFID-TG-01-LANE-01`,
+      toll_plaza_id: "TG-01",
+      lane_id: "LANE-01"
     }, null, 2);
   });
+
+  useEffect(() => {
+    try {
+      const parsed = JSON.parse(rfidInput);
+      let changed = false;
+      if (
+        parsed.toll_plaza_id !== selectedPlaza || 
+        parsed.lane_id !== selectedLane || 
+        parsed.epc_id !== selectedVehicle.tagId
+      ) {
+        changed = true;
+      }
+      
+      if (changed) {
+        parsed.toll_plaza_id = selectedPlaza;
+        parsed.lane_id = selectedLane;
+        parsed.reader_id = `RFID-${selectedPlaza}-${selectedLane}`;
+        parsed.epc_id = selectedVehicle.tagId;
+        parsed.read_timestamp = new Date().toISOString();
+        setRfidInput(JSON.stringify(parsed, null, 2));
+      }
+    } catch (e) {
+      // Ignore if currently typing invalid JSON
+    }
+  }, [selectedPlaza, selectedLane, selectedVehicle]);
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -625,17 +652,6 @@ export const FastagConsoleView = () => {
   const handleSelectVehicle = (veh) => {
     setSelectedVehicle(veh);
     
-    // Update RFID Payload
-    const newRfid = {
-      epc_id: veh.tagId,
-      tag_read_status: "SUCCESS",
-      read_timestamp: new Date().toISOString(),
-      reader_id: `RFID-${veh.tollgate}-${veh.lane}`,
-      toll_plaza_id: veh.tollgate,
-      lane_id: veh.lane
-    };
-    setRfidInput(JSON.stringify(newRfid, null, 2));
-
     // If in simulator mode, update the virtual plate
     if (sensorMode === 'SIMULATOR') {
       setSimulatorPlate(veh.plate);
@@ -675,12 +691,19 @@ export const FastagConsoleView = () => {
         setStatusMessage('Capturing photo and detecting plate...');
         const blob = await captureStillPhotoBlob();
         setCvPreviewUrl(URL.createObjectURL(blob));
-        const ocrData = await detectPlateFromBlob(blob, 'live_capture.png');
+        const ocrPromise = detectPlateFromBlob(blob, 'live_capture.png');
+        
+        // Simulating the parallel RFID read time that would occur in a real physical lane (e.g., 300ms)
+        const [ocrData] = await Promise.all([
+          ocrPromise,
+          new Promise(res => setTimeout(res, 300))
+        ]);
 
         if (ocrData.extracted_plate && ocrData.extracted_plate !== 'UNKNOWN' && ocrData.extracted_plate !== 'ERROR') {
           plateToVerify = ocrData.extracted_plate;
           setDetectedPlate(plateToVerify);
           setOcrConfidence(ocrData.confidence || 96.0);
+          setOcrProcessingTime(ocrData.processing_time_ms || null);
           setStatusMessage(`Plate Detected: [${plateToVerify}] (${ocrData.confidence || 96}% confidence)`);
         } else {
           setStatusMessage('Could not read plate from captured photo. Center the plate and retry.');
@@ -742,6 +765,50 @@ export const FastagConsoleView = () => {
         setCurrentResult(null);
         fetchRecentScans();
       });
+  };
+
+  const submitManualOverride = async () => {
+    if (!manualOverridePlate || manualOverridePlate.trim() === '') {
+      alert("Please enter a valid plate to override.");
+      return;
+    }
+    
+    let parsedRfid;
+    try {
+      parsedRfid = JSON.parse(rfidInput);
+    } catch(err) {
+      alert("Invalid JSON in RFID payload.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      setStatusMessage(`Verifying Manual Override: RFID [${parsedRfid.epc_id}] vs Manual Plate [${manualOverridePlate}]...`);
+      const tollRes = await fetch(`${API_URL}/process-toll`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rfid: parsedRfid,
+          ocr_plate: manualOverridePlate.toUpperCase().trim(),
+          direction: direction
+        })
+      });
+
+      const tollData = await tollRes.json();
+      setCurrentResult(tollData);
+      if (tollData.status === 'APPROVED') {
+        setStatusMessage(`✅ DUAL-FACTOR PASSED (MANUAL OVERRIDE): Vehicle [${manualOverridePlate}] authorized.`);
+        fetchRecentScans();
+        setManualOverridePlate("");
+      } else {
+        setStatusMessage(`🚨 DUAL-FACTOR REJECTED EVEN AFTER OVERRIDE: Security violation detected for plate [${manualOverridePlate}].`);
+      }
+    } catch (e) {
+      console.error(e);
+      setStatusMessage('Error during manual override verification.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleOverride = async (txnId) => {
@@ -812,18 +879,36 @@ export const FastagConsoleView = () => {
 
       {showAnomalyModal && currentResult && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-           <div className="soc-card" style={{ width: '400px', padding: '20px', border: '1px solid #ef4444' }}>
+           <div className="soc-card" style={{ width: '450px', padding: '24px', border: '1px solid #ef4444', boxShadow: '0 10px 25px rgba(239, 68, 68, 0.2)', borderRadius: '0px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#ef4444', marginBottom: '15px' }}>
                  <AlertTriangle size={24} />
                  <h2 style={{ margin: 0, fontSize: '18px' }}>ANOMALY FLAGGED</h2>
               </div>
-              <p style={{ color: '#fff', fontSize: '14px', marginBottom: '10px' }}>{currentResult.message || "Security violation detected."}</p>
+              <p style={{ color: '#fff', fontSize: '14px', marginBottom: '15px', fontWeight: 600 }}>{currentResult.message || "Security violation detected."}</p>
+              
+              {currentResult.details && (
+                 <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '0px', marginBottom: '20px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ marginBottom: '10px' }}>
+                       <span style={{ fontSize: '11px', color: 'var(--cyan-accent)', textTransform: 'uppercase', fontWeight: 700 }}>What Happened</span>
+                       <p style={{ fontSize: '13px', color: '#fff', margin: '4px 0 0 0' }}>{currentResult.details.what}</p>
+                    </div>
+                    <div style={{ marginBottom: '10px' }}>
+                       <span style={{ fontSize: '11px', color: 'var(--cyan-accent)', textTransform: 'uppercase', fontWeight: 700 }}>Why It Was Flagged</span>
+                       <p style={{ fontSize: '13px', color: '#fff', margin: '4px 0 0 0' }}>{currentResult.details.why}</p>
+                    </div>
+                    <div>
+                       <span style={{ fontSize: '11px', color: 'var(--cyan-accent)', textTransform: 'uppercase', fontWeight: 700 }}>Past Context / Evidence</span>
+                       <p style={{ fontSize: '13px', color: '#fff', margin: '4px 0 0 0' }}>{currentResult.details.past_record}</p>
+                    </div>
+                 </div>
+              )}
+
               {currentResult.transaction_id && (
-                 <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginBottom: '20px' }}>TXN: {currentResult.transaction_id}</p>
+                 <p style={{ color: 'var(--text-muted)', fontSize: '11px', marginBottom: '15px', fontFamily: 'var(--font-mono)' }}>TXN: {currentResult.transaction_id}</p>
               )}
               <div style={{ display: 'flex', gap: '10px' }}>
-                 <button onClick={() => handleOverride(currentResult.transaction_id)} style={{ flex: 1, padding: '10px', backgroundColor: '#22c55e', color: '#fff', border: 'none', fontWeight: 700, cursor: 'pointer' }}>PERMIT</button>
-                 <button onClick={() => handleReport(currentResult.transaction_id)} style={{ flex: 1, padding: '10px', backgroundColor: '#ef4444', color: '#fff', border: 'none', fontWeight: 700, cursor: 'pointer' }}>BLOCK</button>
+                 <button onClick={() => handleOverride(currentResult.transaction_id)} style={{ flex: 1, padding: '12px', backgroundColor: '#22c55e', color: '#fff', border: 'none', fontWeight: 700, cursor: 'pointer', borderRadius: '0px' }}>PERMIT</button>
+                 <button onClick={() => handleReport(currentResult.transaction_id)} style={{ flex: 1, padding: '12px', backgroundColor: '#ef4444', color: '#fff', border: 'none', fontWeight: 700, cursor: 'pointer', borderRadius: '0px' }}>BLOCK</button>
               </div>
            </div>
         </div>
@@ -1027,6 +1112,20 @@ export const FastagConsoleView = () => {
                   🎯 Accuracy: {ocrConfidence}%
                 </span>
               )}
+              
+              {ocrProcessingTime && (
+                <span style={{ 
+                  fontSize: '11px', 
+                  color: ocrProcessingTime < 1500 ? '#10b981' : '#ef4444', 
+                  fontWeight: 700,
+                  background: ocrProcessingTime < 1500 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  border: `1px solid ${ocrProcessingTime < 1500 ? '#10b981' : '#ef4444'}`
+                }}>
+                  ⚡ ANPR Latency: {ocrProcessingTime}ms
+                </span>
+              )}
 
               {sensorMode === 'WEBCAM' && isWebcamActive && (
                 <span style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', color: '#10b981', fontWeight: 600 }}>
@@ -1163,27 +1262,28 @@ export const FastagConsoleView = () => {
           </div>
 
           {/* Action Control Bar */}
-          {sensorMode === 'WEBCAM' && isWebcamActive && (
-            <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-              <button
-                className="btn btn-primary btn-sm"
-                onClick={() => executeAnprScan(false)}
-                disabled={isScanning}
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  padding: '9px',
-                  fontWeight: 700
-                }}
-              >
-                <Sparkles size={15} />
-                {isScanning ? `Processing (${ocrProgress}%)...` : 'Capture Photo & Detect Plate'}
-              </button>
-            </div>
-          )}
+          <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={handleProcessToll}
+              disabled={isScanning || loading || (sensorMode === 'WEBCAM' && !isWebcamActive)}
+              style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '9px',
+                fontWeight: 700,
+                boxShadow: '0 4px 15px rgba(6, 182, 212, 0.3)'
+              }}
+            >
+              <Sparkles size={15} />
+              {loading 
+                ? 'Processing Scan & Validating...' 
+                : (sensorMode === 'WEBCAM' ? 'Capture Photo & Validate Automatically' : `Cross-Verify Virtual Plate [${detectedPlate || simulatorPlate}]`)}
+            </button>
+          </div>
 
           {/* Enhanced CV Preprocessed Preview Strip */}
           {cvPreviewUrl && sensorMode === 'WEBCAM' && (
@@ -1217,32 +1317,6 @@ export const FastagConsoleView = () => {
         </div>
       </div>
 
-      {/* Main Dual-Factor Authentication Execution Button */}
-      <button 
-        className="btn btn-primary"
-        onClick={handleProcessToll}
-        disabled={loading || isScanning}
-        style={{ 
-          padding: '14px', 
-          fontSize: '14px', 
-          fontWeight: 700, 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          gap: '8px',
-          boxShadow: '0 4px 15px rgba(6, 182, 212, 0.3)'
-        }}
-      >
-        <ShieldAlert size={18} />
-        {loading ? (
-          'Cross-Verifying Optical Plate vs Overhead RFID...'
-        ) : (
-          sensorMode === 'WEBCAM'
-            ? `Cross-Verify Camera Plate [${detectedPlate || '---'}] vs Overhead RFID`
-            : `Cross-Verify Virtual Plate [${detectedPlate || simulatorPlate}] vs Overhead RFID`
-        )}
-      </button>
-
       {/* Dual Factor Verdict Panel */}
       {currentResult && (
         <div className="soc-card" style={{ 
@@ -1265,15 +1339,40 @@ export const FastagConsoleView = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#f87171', fontWeight: 700, fontSize: '12.5px' }}>
                 <ShieldAlert size={16} /> SECURITY VIOLATION: {currentResult.anomaly.reason}
               </div>
-              <p style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '4px' }}>
+              <p style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '4px', marginBottom: '12px' }}>
                 Overhead RFID transponder does not match the optical plate detected by the camera sensor. Potential cloned tag, spoofed transponder, or license plate fraud.
               </p>
+              
+              <div style={{ padding: '12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', marginBottom: '12px' }}>
+                <p style={{ fontSize: '11px', color: 'var(--text-dim)', marginBottom: '8px', fontWeight: 600 }}>
+                  MANUAL OCR OVERRIDE (OPERATOR FALLBACK)
+                </p>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    className="soc-input"
+                    placeholder="Type visible plate (e.g. MH12AB1234)"
+                    value={manualOverridePlate}
+                    onChange={(e) => setManualOverridePlate(e.target.value.toUpperCase())}
+                    style={{ flex: 1, textTransform: 'uppercase', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
+                  />
+                  <button 
+                    className="btn btn-primary btn-sm"
+                    onClick={submitManualOverride}
+                    disabled={loading}
+                    style={{ fontWeight: 600 }}
+                  >
+                    Submit Manual Plate & Re-Verify
+                  </button>
+                </div>
+              </div>
+
               <button 
                 className="btn btn-danger btn-sm"
                 onClick={handleResolveAnomaly}
-                style={{ marginTop: '10px' }}
+                style={{ width: '100%' }}
               >
-                Operator Override: Clear Security Anomaly & Settle Toll
+                Clear Security Anomaly & Settle Toll Forcefully
               </button>
             </div>
           )}

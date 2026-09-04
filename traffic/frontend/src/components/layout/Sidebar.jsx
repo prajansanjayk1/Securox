@@ -15,52 +15,11 @@ export const Sidebar = () => {
 
   const navSections = [
     {
-      title: 'Command & Operations',
-      items: [
-        { id: 'command-center', label: 'Command Center', icon: Activity },
-        { id: 'live-traffic', label: 'Live Traffic Flow', icon: Radio },
-        { id: 'traffic-map', label: 'Operational Map', icon: Map },
-        { id: 'cameras', label: 'Camera Intelligence', icon: Video, badge: kpis?.active_cameras?.online },
-        { id: 'roads', label: 'Roadways & Corridors', icon: Compass },
-        { id: 'intersections', label: 'Intersections', icon: Layers },
-        { id: 'traffic-signals', label: 'Traffic Signals', icon: Sliders },
-      ]
-    },
-    {
       title: 'Incidents & Alerts',
       items: [
         { id: 'alert-center', label: 'Alert Center', icon: AlertTriangle, badge: activeAlertsCount, isDanger: activeAlertsCount > 0 },
         { id: 'incidents', label: 'Incident Management', icon: Shield, badge: critIncidentsCount, isDanger: critIncidentsCount > 0 },
         { id: 'fastag-console', label: 'FASTag Dual-Auth', icon: CheckCircle2 },
-      ]
-    },
-    {
-      title: 'Cybersecurity SOC',
-      items: [
-        { id: 'cyber-center', label: 'Cyber Security Center', icon: Lock },
-        { id: 'threat-intel', label: 'Threat Intelligence', icon: Terminal },
-        { id: 'asset-security', label: 'Asset Security', icon: Database },
-        { id: 'network-anomalies', label: 'Network Telemetry', icon: Server },
-        { id: 'user-security', label: 'User & Account Risk', icon: Eye },
-        { id: 'threat-hunting', label: 'Threat Hunting', icon: Compass },
-        { id: 'forensics', label: 'Digital Forensics', icon: FileText },
-      ]
-    },
-    {
-      title: 'Analytics & AI',
-      items: [
-        { id: 'analytics', label: 'Traffic Analytics', icon: BarChart3 },
-        { id: 'predictions', label: 'Predictive Horizons', icon: TrendingUp },
-        { id: 'ai-assistant', label: 'AI Security Assistant', icon: HelpCircle },
-      ]
-    },
-    {
-      title: 'System & Simulation',
-      items: [
-        { id: 'simulator', label: 'Scenario Simulator', icon: Play, isHighlight: true },
-        { id: 'system-health', label: 'System Health', icon: Cpu },
-        { id: 'audit-log', label: 'Audit Log', icon: FileText },
-        { id: 'admin', label: 'Administration', icon: Settings },
       ]
     }
   ];

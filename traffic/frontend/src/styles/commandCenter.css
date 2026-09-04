@@ -54,7 +54,8 @@ body {
 .soc-app-container {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   background-color: var(--bg-primary);
 }
 
@@ -67,6 +68,7 @@ body {
 
 .soc-content-area {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 20px 24px;
   background-color: var(--bg-primary);
@@ -82,6 +84,7 @@ body {
   justify-content: space-between;
   padding: 0 24px;
   z-index: 100;
+  position: relative;
 }
 
 .soc-brand {
@@ -127,27 +130,31 @@ body {
   display: flex;
   align-items: center;
   gap: 20px;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .sim-badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   background: rgba(245, 158, 11, 0.12);
   border: 1px solid rgba(245, 158, 11, 0.4);
   color: #fbbf24;
   font-size: 11px;
   font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 20px;
+  padding: 6px 12px;
+  border-radius: 0px;
   text-transform: uppercase;
   letter-spacing: 0.6px;
+  line-height: 1;
 }
 
 .sim-pulse-dot {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: 0px;
   background-color: #f59e0b;
   animation: pulse-dot 1.8s infinite;
 }

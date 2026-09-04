@@ -936,6 +936,124 @@ def _get_expected_plate_for_epc(db: Session, epc_id: Optional[str]) -> Optional[
     vehicle = db.query(models.Vehicle).filter(models.Vehicle.tag_id == epc_id).first()
     return vehicle.vehicle_plate if vehicle else None
 
+import time
+from fastapi.concurrency import run_in_threadpool
+
+def _process_plate_ocr_sync(contents: bytes, expected_plate: Optional[str]) -> dict:
+    java_res = run_java_pbl_ocr(contents)
+    if java_res.get("extracted_plate") not in ["UNKNOWN", "ERROR", "", None]:
+        return {
+            "extracted_plate": java_res["extracted_plate"],
+            "raw_text": java_res["extracted_plate"],
+            "confidence": java_res.get("confidence", 96.0),
+            "engine": "JAVA_PBL_PARK_X",
+            "regions_tried": 1,
+            "status": "DETECTED"
+        }
+
+    nparr = np.frombuffer(contents, np.uint8)
+    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    if img is None:
+        return {"extracted_plate": "ERROR", "details": "Could not decode image"}
+
+    image_regions = detect_plate_candidates_cv(img)
+    vote_counter = Counter()
+    best_plate = "UNKNOWN"
+    best_conf = 0.0
+    best_raw = ""
+    raw_attempts = []
+
+    try:
+        import os
+        import cv2 as debug_cv2
+        os.makedirs("/tmp/securox_debug", exist_ok=True)
+        debug_cv2.imwrite(f"/tmp/securox_debug/raw_capture_{int(time.time())}.png", img)
+        
+        import pytesseract
+        tesseract_config = "-c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        for region_index, cand in enumerate(image_regions):
+            debug_cv2.imwrite(f"/tmp/securox_debug/region_{region_index}.png", cand)
+            processed_images = preprocess_anpr_image(cand)
+            for p_idx, processed in enumerate(processed_images):
+                debug_cv2.imwrite(f"/tmp/securox_debug/region_{region_index}_processed_{p_idx}.png", processed)
+                for psm in [7, 8, 6, 11]:
+                    try:
+                        data = pytesseract.image_to_data(
+                            processed,
+                            config=f"--oem 3 --psm {psm} {tesseract_config}",
+                            output_type=pytesseract.Output.DICT
+                        )
+                        words = []
+                        confidences = []
+                        for text, conf in zip(data.get("text", []), data.get("conf", [])):
+                            cleaned = re.sub(r"[^A-Z0-9]", "", (text or "").upper())
+                            if cleaned:
+                                words.append(cleaned)
+                                try:
+                                    conf_float = float(conf)
+                                    if conf_float >= 0:
+                                        confidences.append(conf_float)
+                                except ValueError:
+                                    pass
+                        raw = " ".join(words)
+                        avg_conf = sum(confidences) / len(confidences) if confidences else 0.0
+                    except Exception:
+                        raw = pytesseract.image_to_string(
+                            processed,
+                            config=f"--oem 3 --psm {psm} {tesseract_config}"
+                        )
+                        avg_conf = 0.0
+
+                    if raw.strip():
+                        print(f"[DEBUG OCR] Region {region_index}, Process {p_idx}, PSM {psm} -> '{raw.strip()}' (Conf: {avg_conf:.1f})")
+
+                    if not raw.strip():
+                        continue
+                    raw_attempts.append(raw.strip())
+                    plates = extract_all_plate_candidates(raw)
+                    for plate in plates:
+                        if not is_valid_indian_plate(plate):
+                            continue
+                        vote_counter[plate] += 1
+                        score = avg_conf + (vote_counter[plate] * 8) + max(0, 10 - region_index)
+                        if expected_plate and _plate_similarity(plate, expected_plate) >= 0.82:
+                            score += 12
+                        if score > best_conf:
+                            best_plate = plate
+                            best_conf = round(min(score, 99.0), 1)
+                            best_raw = raw.strip()
+                    if best_conf >= 90.0:
+                        break
+                if best_conf >= 90.0:
+                    break
+            if best_conf >= 90.0:
+                break
+    except Exception as e:
+        print(f"Tesseract ANPR failed: {e}")
+
+    if best_plate == "UNKNOWN" and expected_plate and raw_attempts:
+        expected_fragments = [
+            expected_plate,
+            expected_plate[:4],
+            expected_plate[-4:],
+            expected_plate[4:-4],
+        ]
+        raw_flat = re.sub(r"[^A-Z0-9]", "", " ".join(raw_attempts).upper())
+        matched_fragments = sum(1 for fragment in expected_fragments if fragment and fragment in raw_flat)
+        if matched_fragments >= 2:
+            best_plate = expected_plate
+            best_conf = 90.0
+            best_raw = raw_flat
+
+    return {
+        "extracted_plate": best_plate,
+        "raw_text": best_raw,
+        "confidence": best_conf,
+        "expected_plate": expected_plate,
+        "regions_tried": len(image_regions),
+        "status": "DETECTED" if best_plate != "UNKNOWN" else "NO_PLATE_DETECTED"
+    }
+
 @app.post("/extract-plate")
 async def extract_plate(
     file: UploadFile = File(...),
@@ -943,19 +1061,10 @@ async def extract_plate(
     epc_id: Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
-    """
-    Extracts Indian vehicle plate using:
-    1. Plate hint / override if passed by operator or client.
-    2. Plate pattern matching from image filename.
-    3. OpenCV contour character isolation & OCR text parsing.
-    4. Tesseract OCR (if installed in environment).
-    5. Perceptual image visual signature resolver mapped across registered vehicle fleet
-       (ensuring every distinct image resolves to its unique distinct plate, never the same static fallback).
-    """
     try:
+        t0 = time.perf_counter()
         expected_plate = _get_expected_plate_for_epc(db, epc_id)
 
-        # 1. Explicit plate hint from caller
         if plate_hint and plate_hint.strip():
             cleaned_hint = normalize_indian_plate(plate_hint.strip())
             if cleaned_hint != "UNKNOWN":
@@ -963,125 +1072,25 @@ async def extract_plate(
                     "extracted_plate": cleaned_hint,
                     "raw_text": plate_hint.strip(),
                     "method": "CLIENT_HINT_OR_OVERRIDE",
-                    "regions_tried": 1
+                    "regions_tried": 1,
+                    "processing_time_ms": round((time.perf_counter() - t0) * 1000, 2)
                 }
 
-        # 2. Check if filename contains a valid plate (e.g. MH12PQ4589.jpg)
         if file.filename:
             fn_match = re.search(r'([A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{4})', file.filename.upper().replace("-", "").replace(" ", ""))
             if fn_match:
-                extracted = fn_match.group(1)
                 return {
-                    "extracted_plate": extracted,
+                    "extracted_plate": fn_match.group(1),
                     "raw_text": file.filename,
                     "method": "FILENAME_EMBEDDED_METADATA",
-                    "regions_tried": 1
+                    "regions_tried": 1,
+                    "processing_time_ms": round((time.perf_counter() - t0) * 1000, 2)
                 }
 
         contents = await file.read()
-
-        # 3. Top-Tier Engine: User's Java PBL (park-x) OCR Pipeline
-        java_res = run_java_pbl_ocr(contents)
-        if java_res.get("extracted_plate") not in ["UNKNOWN", "ERROR", "", None]:
-            return {
-                "extracted_plate": java_res["extracted_plate"],
-                "raw_text": java_res["extracted_plate"],
-                "confidence": java_res.get("confidence", 96.0),
-                "engine": "JAVA_PBL_PARK_X",
-                "regions_tried": 1,
-                "status": "DETECTED"
-            }
-
-        nparr = np.frombuffer(contents, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        if img is None:
-            return {"extracted_plate": "ERROR", "details": "Could not decode image"}
-
-        image_regions = detect_plate_candidates_cv(img)
-        vote_counter = Counter()
-        best_plate = "UNKNOWN"
-        best_conf = 0.0
-        best_raw = ""
-        raw_attempts = []
-
-        try:
-            import pytesseract
-            tesseract_config = "-c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-            for region_index, cand in enumerate(image_regions):
-                processed_images = preprocess_anpr_image(cand)
-                for processed in processed_images:
-                    for psm in [7, 8, 6]:
-                        try:
-                            data = pytesseract.image_to_data(
-                                processed,
-                                config=f"--oem 3 --psm {psm} {tesseract_config}",
-                                output_type=pytesseract.Output.DICT
-                            )
-                            words = []
-                            confidences = []
-                            for text, conf in zip(data.get("text", []), data.get("conf", [])):
-                                cleaned = re.sub(r"[^A-Z0-9]", "", (text or "").upper())
-                                if cleaned:
-                                    words.append(cleaned)
-                                    try:
-                                        conf_float = float(conf)
-                                        if conf_float >= 0:
-                                            confidences.append(conf_float)
-                                    except ValueError:
-                                        pass
-                            raw = " ".join(words)
-                            avg_conf = sum(confidences) / len(confidences) if confidences else 0.0
-                        except Exception:
-                            raw = pytesseract.image_to_string(
-                                processed,
-                                config=f"--oem 3 --psm {psm} {tesseract_config}"
-                            )
-                            avg_conf = 0.0
-
-                        if not raw.strip():
-                            continue
-                        raw_attempts.append(raw.strip())
-                        plates = extract_all_plate_candidates(raw)
-                        for plate in plates:
-                            if not is_valid_indian_plate(plate):
-                                continue
-                            vote_counter[plate] += 1
-                            score = avg_conf + (vote_counter[plate] * 8) + max(0, 10 - region_index)
-                            if expected_plate and _plate_similarity(plate, expected_plate) >= 0.82:
-                                score += 12
-                            if score > best_conf:
-                                best_plate = plate
-                                best_conf = round(min(score, 99.0), 1)
-                                best_raw = raw.strip()
-                    if best_conf >= 90.0 and vote_counter[best_plate] >= 2:
-                        break
-                if best_conf >= 90.0 and vote_counter[best_plate] >= 2:
-                    break
-        except Exception as e:
-            print(f"Tesseract ANPR failed: {e}")
-
-        if best_plate == "UNKNOWN" and expected_plate and raw_attempts:
-            expected_fragments = [
-                expected_plate,
-                expected_plate[:4],
-                expected_plate[-4:],
-                expected_plate[4:-4],
-            ]
-            raw_flat = re.sub(r"[^A-Z0-9]", "", " ".join(raw_attempts).upper())
-            matched_fragments = sum(1 for fragment in expected_fragments if fragment and fragment in raw_flat)
-            if matched_fragments >= 2:
-                best_plate = expected_plate
-                best_conf = 90.0
-                best_raw = raw_flat
-
-        return {
-            "extracted_plate": best_plate,
-            "raw_text": best_raw,
-            "confidence": best_conf,
-            "expected_plate": expected_plate,
-            "regions_tried": len(image_regions),
-            "status": "DETECTED" if best_plate != "UNKNOWN" else "NO_PLATE_DETECTED"
-        }
+        result = await run_in_threadpool(_process_plate_ocr_sync, contents, expected_plate)
+        result["processing_time_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+        return result
     except Exception as e:
         return {"extracted_plate": "ERROR", "details": str(e)}
 
@@ -1112,7 +1121,12 @@ async def process_toll(request: ProcessTollRequest, db: Session = Depends(get_db
         return {
             "status": "anomaly",
             "reason": "duplicate_tag_scan",
-            "message": "Duplicate scan detected."
+            "message": "Duplicate scan detected.",
+            "details": {
+                "what": "Exact duplicate transaction detected (race condition).",
+                "why": "The system received multiple processing requests for the same vehicle in the same minute.",
+                "past_record": f"Already processed for tag {epc_id} at {existing_txn.tollgate_id}."
+            }
         }
 
     vehicle = db.query(models.Vehicle).filter(models.Vehicle.tag_id == epc_id).first()
@@ -1120,12 +1134,24 @@ async def process_toll(request: ProcessTollRequest, db: Session = Depends(get_db
     reason = None
     status = "success"
 
+    details_obj = None
+
     if ocr_plate == "UNKNOWN":
         status = "anomaly"
         reason = "Could not read a valid Indian vehicle plate from OCR image."
+        details_obj = {
+            "what": "ANPR Failure",
+            "why": "The optical character recognition (OCR) engine could not confidently extract a license plate from the captured image.",
+            "past_record": "No previous matching records could be pulled since the plate is unknown."
+        }
     elif vehicle and vehicle.vehicle_plate != ocr_plate:
         status = "anomaly"
         reason = f"PLATE MISMATCH: RFID tag {epc_id} belongs to {vehicle.vehicle_plate}, but ANPR camera detected {ocr_plate}."
+        details_obj = {
+            "what": "Dual-Factor Mismatch (Potential Fraud)",
+            "why": "The license plate read by the camera does not match the license plate registered to the RFID tag.",
+            "past_record": f"RFID Tag {epc_id} is officially registered to vehicle {vehicle.vehicle_plate}."
+        }
 
     if status == "success":
         last_scan = db.query(models.Scan).filter(models.Scan.tag_id == epc_id).order_by(models.Scan.timestamp.desc()).first()
@@ -1134,6 +1160,11 @@ async def process_toll(request: ProcessTollRequest, db: Session = Depends(get_db
             if last_scan.tollgate_id == tollgate_id and time_diff_min < 2.0:
                 status = "anomaly"
                 reason = f"Duplicate tag scan at same gate {tollgate_id} only {time_diff_min:.1f} mins after previous scan."
+                details_obj = {
+                    "what": "Rapid Consecutive Scans",
+                    "why": f"The vehicle was scanned again at the same plaza within an unusually short timeframe ({time_diff_min:.1f} minutes).",
+                    "past_record": f"Last scan was at {last_scan.timestamp.strftime('%Y-%m-%d %H:%M:%S')} (Transaction ID: {last_scan.transaction_id})."
+                }
 
     if status == "anomaly":
         anomaly_record = models.Anomaly(
@@ -1204,7 +1235,8 @@ async def process_toll(request: ProcessTollRequest, db: Session = Depends(get_db
                 "reason": anomaly_record.reason,
                 "severity": anomaly_record.severity,
                 "transaction_id": transaction_id
-            }
+            },
+            "details": details_obj
         }
 
 @app.post("/api/toll/{transaction_id}/override")

@@ -181,20 +181,22 @@ def detect_plate_candidates_cv(img: np.ndarray) -> List[np.ndarray]:
     except Exception:
         pass
         
+    final_candidates = []
+    
+    # Add the best contour candidate (if any)
+    if candidates:
+        final_candidates.append(candidates[0])
+        
     # Central zone candidate (70% width, 50% height)
     cx, cy = int(w * 0.15), int(h * 0.25)
-    candidates.append(img[cy:cy + int(h * 0.50), cx:cx + int(w * 0.70)])
+    final_candidates.append(img[cy:cy + int(h * 0.50), cx:cx + int(w * 0.70)])
     
     # Lower bumper candidate
-    candidates.append(img[int(h * 0.45):int(h * 0.90), int(w * 0.10):int(w * 0.90)])
+    final_candidates.append(img[int(h * 0.45):int(h * 0.90), int(w * 0.10):int(w * 0.90)])
 
-    # Wider lower/middle crops handle plates not perfectly inside the reticle.
-    candidates.append(img[int(h * 0.30):int(h * 0.82), int(w * 0.05):int(w * 0.95)])
-    candidates.append(img[int(h * 0.15):int(h * 0.70), int(w * 0.05):int(w * 0.95)])
-    
-    # Full frame
-    candidates.append(img)
-    return candidates[:10]
+    # Full frame as absolute fallback
+    final_candidates.append(img)
+    return final_candidates
 
 def preprocess_anpr_image(img: np.ndarray) -> List[np.ndarray]:
     """
@@ -202,6 +204,9 @@ def preprocess_anpr_image(img: np.ndarray) -> List[np.ndarray]:
     Grayscale -> 1.4x Contrast -> Otsu Thresholding -> Upscale >=320x80
     """
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if len(img.shape) == 3 else img.copy()
+    # Tesseract prefers larger x-heights; upscaling 2x yields significantly better results
+    gray = cv2.resize(gray, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
+    
     h, w = gray.shape[:2]
     if w < 320 or h < 80:
         scale = max(320.0 / w, 80.0 / h)
@@ -211,13 +216,13 @@ def preprocess_anpr_image(img: np.ndarray) -> List[np.ndarray]:
     denoised = cv2.bilateralFilter(adjusted, 9, 75, 75)
     clahe = cv2.createCLAHE(clipLimit=2.4, tileGridSize=(8, 8)).apply(denoised)
     _, otsu = cv2.threshold(clahe, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    
+    # Adaptive thresholding is critical for glare and shadows from webcam captures
     adaptive = cv2.adaptiveThreshold(
         clahe, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
         cv2.THRESH_BINARY, 31, 9
     )
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
-    opened = cv2.morphologyEx(adaptive, cv2.MORPH_OPEN, kernel)
-    return [clahe, otsu, adaptive, cv2.bitwise_not(adaptive), opened]
+    return [clahe, otsu, adaptive]
 
 VEHICLE_CLASSES = [
     "CAR", "BUS", "TRUCK", "MOTORCYCLE", "BICYCLE", "VAN", "EMERGENCY_VEHICLE", "OTHER"

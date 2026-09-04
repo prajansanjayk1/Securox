@@ -105,7 +105,7 @@ const MainRouter = () => {
       case 'system-health': return <SystemHealthView />;
       case 'audit-log': return <AuditLogView />;
       case 'admin': return <AdministrationView />;
-      default: return <CommandCenterView />;
+      default: return <AlertCenterView />;
     }
   };
 
