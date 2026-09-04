@@ -107,8 +107,12 @@ export const BlastRadiusPage = ({ assets, onNavigateToResponse }) => {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-b border-slate-800 pb-4">
             <div>
               <span className="text-base font-bold font-mono text-white">{selectedAsset.name}</span>
-              <div className="text-xs font-mono text-slate-400 mt-0.5">
-                {selectedAsset.ip_address}:{selectedAsset.port} | {selectedAsset.protocol}
+              <div className="text-xs font-mono text-slate-400 mt-0.5 flex flex-wrap items-center gap-2">
+                <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20 text-[10px] font-bold">
+                  STATIC_REFERENCE
+                </span>
+                <span>{selectedAsset.protocol}</span>
+                <span className="text-slate-500 text-[11px]">&bull; IP: {selectedAsset.ip_address}</span>
               </div>
             </div>
             <div className="flex items-center gap-2">

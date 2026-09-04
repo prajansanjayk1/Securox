@@ -14,6 +14,8 @@ class PathwayMilestone(BaseModel):
     clinical_purpose: str
     underlying_digital_dependency: str
     observed_table_field: str
+    dependency_derivation: str = "STATIC_REFERENCE"
+    observation_derivation: str = "DATA_DERIVED"
 
 class CarePathwayShadow(BaseModel):
     id: str
@@ -24,6 +26,15 @@ class CarePathwayShadow(BaseModel):
     observed_volume_metric: str
     milestones: List[PathwayMilestone]
     primary_assets: List[str]
+    derivation: str = "DATA_DERIVED"
+    provenance_chain: Dict[str, str] = {
+        "cyber_event": "DATA_DERIVED (Statistical anomalies computed from source dataset)",
+        "digital_asset": "STATIC_REFERENCE (NIST SP 800-207 Zero Trust Architecture Node)",
+        "healthcare_dependency": "STATIC_REFERENCE (Reference Clinical Systems Topology)",
+        "care_service": "STATIC_REFERENCE (Hospital Departmental Organizational Model)",
+        "care_pathway": "DATA_DERIVED (Clinical workflows grounded in MIMIC-IV / eICU records)",
+        "operational_exposure": "DATA_DERIVED (NIST SP 800-30 Probabilistic Cascade Model)"
+    }
 
 CARE_PATHWAYS: Dict[str, CarePathwayShadow] = {
     "PATHWAY_ED": CarePathwayShadow(
@@ -39,22 +50,28 @@ CARE_PATHWAYS: Dict[str, CarePathwayShadow] = {
                 id="MS_ED_01",
                 name="Inbound Transport & Triage Acuity Assessment",
                 clinical_purpose="Assign Emergency Severity Index (ESI 1-5) and capture initial physiological baseline",
-                underlying_digital_dependency="ED Triage Workstation & Core EHR Sync",
-                observed_table_field="mimic-iv-ed: triage.csv.gz (acuity, chiefcomplaint, o2sat)"
+                underlying_digital_dependency="ED Triage Workstation & Core EHR Sync (Generic Class)",
+                observed_table_field="mimic-iv-ed: triage.csv.gz (acuity, chiefcomplaint, o2sat)",
+                dependency_derivation="STATIC_REFERENCE",
+                observation_derivation="DATA_DERIVED"
             ),
             PathwayMilestone(
                 id="MS_ED_02",
                 name="STAT Emergency Medication Retrieval",
-                clinical_purpose="Access rapid-sequence intubation or resuscitation medications via Pyxis cabinet",
-                underlying_digital_dependency="Pyxis MedStation Cabinet Lock Authorization",
-                observed_table_field="mimic-iv-ed: pyxis.csv.gz (name, gsn, charttime)"
+                clinical_purpose="Access rapid-sequence intubation or resuscitation medications via automated dispensing cabinet",
+                underlying_digital_dependency="Automated Dispensing Cabinet Interface (Generic Class)",
+                observed_table_field="mimic-iv-ed: pyxis.csv.gz (name, gsn, charttime)",
+                dependency_derivation="STATIC_REFERENCE",
+                observation_derivation="DATA_DERIVED"
             ),
             PathwayMilestone(
                 id="MS_ED_03",
                 name="Clinical Service Disposition Transfer",
                 clinical_purpose="Transition stabilized patient to Inpatient Floor, ICU, or Operating Room",
-                underlying_digital_dependency="Core EHR Patient Tracking System",
-                observed_table_field="mimic-iv-ed: edstays.csv.gz (disposition, outtime)"
+                underlying_digital_dependency="Core EHR Patient Tracking System (Generic Class)",
+                observed_table_field="mimic-iv-ed: edstays.csv.gz (disposition, outtime)",
+                dependency_derivation="STATIC_REFERENCE",
+                observation_derivation="DATA_DERIVED"
             )
         ]
     ),
@@ -71,22 +88,28 @@ CARE_PATHWAYS: Dict[str, CarePathwayShadow] = {
                 id="MS_ICU_01",
                 name="Continuous Hemodynamic & Oxygenation Telemetry",
                 clinical_purpose="Second-by-second ECG, MAP, and SaO2 monitoring with central station alarm annunciation",
-                underlying_digital_dependency="Philips IntelliVue Bedside Gateway",
-                observed_table_field="eicu: vitalPeriodic.csv.gz (heartrate, sao2, systemicmean)"
+                underlying_digital_dependency="Bedside Physiological Telemetry Gateway (Generic Class)",
+                observed_table_field="eicu: vitalPeriodic.csv.gz (heartrate, sao2, systemicmean)",
+                dependency_derivation="STATIC_REFERENCE",
+                observation_derivation="DATA_DERIVED"
             ),
             PathwayMilestone(
                 id="MS_ICU_02",
                 name="Life-Critical Mechanical Ventilation Titration",
                 clinical_purpose="Continuous delivery of delivered oxygen (FiO2) and positive end-expiratory pressure (PEEP)",
-                underlying_digital_dependency="Puritan Bennett Ventilator Telemetry Server",
-                observed_table_field="eicu: respiratoryCharting.csv.gz (respchartvaluelabel, respchartvalue)"
+                underlying_digital_dependency="ICU Mechanical Ventilator Telemetry Server (Generic Class)",
+                observed_table_field="eicu: respiratoryCharting.csv.gz (respchartvaluelabel, respchartvalue)",
+                dependency_derivation="STATIC_REFERENCE",
+                observation_derivation="DATA_DERIVED"
             ),
             PathwayMilestone(
                 id="MS_ICU_03",
                 name="Vasoactive Smart Infusion Pump Titration",
                 clinical_purpose="Closed-loop rate titrations for norepinephrine, dopamine, or propofol",
-                underlying_digital_dependency="Smart IV Infusion Pump Wireless Gateway",
-                observed_table_field="eicu: infusiondrug.csv.gz (drugname, drugrate, infusionrate)"
+                underlying_digital_dependency="Smart IV Infusion Pump Wireless Gateway (Generic Class)",
+                observed_table_field="eicu: infusiondrug.csv.gz (drugname, drugrate, infusionrate)",
+                dependency_derivation="STATIC_REFERENCE",
+                observation_derivation="DATA_DERIVED"
             )
         ]
     ),
@@ -103,22 +126,28 @@ CARE_PATHWAYS: Dict[str, CarePathwayShadow] = {
                 id="MS_LAB_01",
                 name="Automated Specimen Barcode Accessioning",
                 clinical_purpose="Match drawn specimen tube to computerized physician order",
-                underlying_digital_dependency="Laboratory Information System (LIS) Interface",
-                observed_table_field="mimic-iv: hosp/labevents.csv.gz (specimen_id, itemid)"
+                underlying_digital_dependency="Laboratory Information System (LIS) Interface (Generic Class)",
+                observed_table_field="mimic-iv: hosp/labevents.csv.gz (specimen_id, itemid)",
+                dependency_derivation="STATIC_REFERENCE",
+                observation_derivation="DATA_DERIVED"
             ),
             PathwayMilestone(
                 id="MS_LAB_02",
                 name="Analyzer Result Processing & Abnormal Flagging",
                 clinical_purpose="Chemistry and hematology automated value calculation",
-                underlying_digital_dependency="Roche/Sunquest Analyzer Interface",
-                observed_table_field="mimic-iv: hosp/labevents.csv.gz (valuenum, valueuom, flag)"
+                underlying_digital_dependency="Clinical Chemistry & Hematology Analyzer Interface (Generic Class)",
+                observed_table_field="mimic-iv: hosp/labevents.csv.gz (valuenum, valueuom, flag)",
+                dependency_derivation="STATIC_REFERENCE",
+                observation_derivation="DATA_DERIVED"
             ),
             PathwayMilestone(
                 id="MS_LAB_03",
                 name="STAT Critical Panic Value Broadcast",
                 clinical_purpose="Immediate alert transmission to attending clinician for life-threatening lab values",
-                underlying_digital_dependency="LIS-to-EHR Notification Bus",
-                observed_table_field="mimic-iv: hosp/labevents.csv.gz (priority, charttime)"
+                underlying_digital_dependency="LIS-to-EHR Notification Bus (Generic Class)",
+                observed_table_field="mimic-iv: hosp/labevents.csv.gz (priority, charttime)",
+                dependency_derivation="STATIC_REFERENCE",
+                observation_derivation="DATA_DERIVED"
             )
         ]
     ),
@@ -135,22 +164,28 @@ CARE_PATHWAYS: Dict[str, CarePathwayShadow] = {
                 id="MS_PHARM_01",
                 name="Computerized Physician Order Verification",
                 clinical_purpose="Pharmacist review of dose, route, drug-drug interactions, and clinical indication",
-                underlying_digital_dependency="Provider Order Entry (POE) Module",
-                observed_table_field="mimic-iv: hosp/poe.csv.gz (order_type, order_subtype)"
+                underlying_digital_dependency="Provider Order Entry (POE) Module (Generic Class)",
+                observed_table_field="mimic-iv: hosp/poe.csv.gz (order_type, order_subtype)",
+                dependency_derivation="STATIC_REFERENCE",
+                observation_derivation="DATA_DERIVED"
             ),
             PathwayMilestone(
                 id="MS_PHARM_02",
                 name="Automated Dispensing Cabinet Drawer Release",
-                clinical_purpose="Electronic release of unit-dose medications at patient ward Pyxis unit",
-                underlying_digital_dependency="Pyxis Cabinet Interface Gateway",
-                observed_table_field="mimic-iv-ed: pyxis.csv.gz (name, charttime)"
+                clinical_purpose="Electronic release of unit-dose medications at patient ward unit",
+                underlying_digital_dependency="Automated Dispensing Cabinet Interface (Generic Class)",
+                observed_table_field="mimic-iv-ed: pyxis.csv.gz (name, charttime)",
+                dependency_derivation="STATIC_REFERENCE",
+                observation_derivation="DATA_DERIVED"
             ),
             PathwayMilestone(
                 id="MS_PHARM_03",
                 name="Bedside Five-Rights Barcode Verification (BCMA)",
                 clinical_purpose="Scan patient wristband and medication packet to prevent administration errors",
-                underlying_digital_dependency="Closed-Loop Barcode Server (eMAR)",
-                observed_table_field="mimic-iv: hosp/emar_detail.csv.gz (reason_for_no_barcode)"
+                underlying_digital_dependency="Closed-Loop Barcode Server (eMAR) (Generic Class)",
+                observed_table_field="mimic-iv: hosp/emar_detail.csv.gz (reason_for_no_barcode)",
+                dependency_derivation="STATIC_REFERENCE",
+                observation_derivation="DATA_DERIVED"
             )
         ]
     ),
@@ -167,22 +202,28 @@ CARE_PATHWAYS: Dict[str, CarePathwayShadow] = {
                 id="MS_SURG_01",
                 name="Pre-Operative Anesthesia Readiness Sign-Off",
                 clinical_purpose="Verify lab clearance, cardiac evaluation, and blood bank cross-match",
-                underlying_digital_dependency="Core EHR Surgical Scheduling & Labs Module",
-                observed_table_field="mimic-iv: hosp/services.csv.gz (curr_service)"
+                underlying_digital_dependency="Core EHR Surgical Scheduling & Labs Module (Generic Class)",
+                observed_table_field="mimic-iv: hosp/services.csv.gz (curr_service)",
+                dependency_derivation="STATIC_REFERENCE",
+                observation_derivation="DATA_DERIVED"
             ),
             PathwayMilestone(
                 id="MS_SURG_02",
                 name="Intraoperative Anesthesia Telemetry Streaming",
                 clinical_purpose="Continuous monitoring of end-tidal CO2, depth of anesthesia, and arterial blood pressure",
-                underlying_digital_dependency="Operating Room Medical Device Bus",
-                observed_table_field="eicu: vitalPeriodic.csv.gz & chartevents.csv.gz"
+                underlying_digital_dependency="Operating Room Medical Device Bus (Generic Class)",
+                observed_table_field="eicu: vitalPeriodic.csv.gz & chartevents.csv.gz",
+                dependency_derivation="STATIC_REFERENCE",
+                observation_derivation="DATA_DERIVED"
             ),
             PathwayMilestone(
                 id="MS_SURG_03",
                 name="Post-Anesthesia Care Unit (PACU) Recovery Tracking",
                 clinical_purpose="Monitor extubation parameters and hemodynamic stabilization prior to ward admission",
-                underlying_digital_dependency="PACU Bedside Telemetry Station",
-                observed_table_field="mimic-iv: icu/chartevents.csv.gz"
+                underlying_digital_dependency="PACU Bedside Telemetry Station (Generic Class)",
+                observed_table_field="mimic-iv: icu/chartevents.csv.gz",
+                dependency_derivation="STATIC_REFERENCE",
+                observation_derivation="DATA_DERIVED"
             )
         ]
     )

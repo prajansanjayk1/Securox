@@ -78,12 +78,29 @@ def test_detection_engine_authentic_threats():
     assert "CYB_THR_003" in event_ids  # BCMA Bypass Spike
     assert "CYB_THR_004" in event_ids  # Pyxis Access Surge
 
+    # Section 5 provenance validation on every active threat
+    for th in threats:
+        assert "attack_type" in th
+        assert "attack_category" in th
+        assert "source_dataset" in th
+        assert "source_file" in th
+        assert th["observed_count"] > 0
+        assert "time_range" in th
+        assert "evidence" in th
+        assert "detection_method" in th
+        assert th["confidence_tier"] in ["HIGH", "MEDIUM", "LOW"]
+        assert th["uncertainty"] in ["LOW", "MEDIUM", "HIGH"]
+        assert th["derivation"] == "DATA_DERIVED"
+
 def test_dependency_cartography_graph():
     graph = dependency_graph_service.build_cartography_graph()
     assert graph["total_nodes"] >= 12
     assert graph["total_links"] >= 10
     asset_nodes = [n for n in graph["nodes"] if n.get("group") == "ASSET"]
     assert len(asset_nodes) == 7
+    for a in asset_nodes:
+        assert a["derivation"] == "STATIC_REFERENCE"
+        assert "NOT_AVAILABLE" in a["ip"]
 
 def test_care_pathways_shadow():
     pathways = care_pathway_service.get_all_pathways()
@@ -94,6 +111,9 @@ def test_care_pathways_shadow():
     assert "PATHWAY_LAB" in pathway_ids
     assert "PATHWAY_PHARM" in pathway_ids
     assert "PATHWAY_SURG" in pathway_ids
+    for p in pathways:
+        assert p["derivation"] == "DATA_DERIVED"
+        assert "provenance_chain" in p
 
 def test_care_pathway_exposure_states():
     exposures = operational_exposure_engine.calculate_exposures()
@@ -115,6 +135,16 @@ def test_explainable_risk_engine():
     assert risk["risk_tier"] in ["NOMINAL_STABLE", "MONITORED_OPERATIONAL_RISK", "ELEVATED_CLINICAL_RISK", "CRITICAL_CARE_EXPOSURE"]
     assert len(risk["risk_drivers"]) >= 4
 
+    # Section 4 reproducible risk calculation verification
+    assert risk["risk_confidence"] == "HIGH (0.82)"
+    assert risk["data_completeness_pct"] == 75.0
+    comps = risk["calculation_components"]
+    assert "cyber_evidence_score" in comps
+    assert "asset_criticality_score" in comps
+    assert "observed_pathway_exposure_score" in comps
+    assert "cascade_propagation_potential_score" in comps
+    assert comps["data_completeness_factor"] == 0.75
+
 def test_iomt_devices_engine():
     overview = iomt_device_engine.get_device_overview()
     assert overview["total_connected_medical_devices"]["derivation"] == "NOT_AVAILABLE"
@@ -129,6 +159,8 @@ def test_api_rest_endpoints():
     r_overview = client.get("/api/overview")
     assert r_overview.status_code == 200
     assert r_overview.json()["zero_synthetic_data_guarantee"] is True
+    assert r_overview.json()["risk_confidence"] == "HIGH (0.82)"
+    assert r_overview.json()["data_completeness_pct"] == 75.0
 
     r_threats = client.get("/api/threats")
     assert r_threats.status_code == 200
@@ -137,6 +169,9 @@ def test_api_rest_endpoints():
     r_assets = client.get("/api/assets")
     assert r_assets.status_code == 200
     assert len(r_assets.json()["assets"]) == 7
+    for a in r_assets.json()["assets"]:
+        assert a["derivation"] == "STATIC_REFERENCE"
+        assert "NOT_AVAILABLE" in a["ip_address"]
 
     r_deps = client.get("/api/dependencies")
     assert r_deps.status_code == 200

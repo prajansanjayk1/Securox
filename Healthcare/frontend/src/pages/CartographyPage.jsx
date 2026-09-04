@@ -74,11 +74,11 @@ export const CartographyPage = ({ assets, pathways, threats, onSelectAsset }) =>
                 >
                   <div className="flex items-center justify-between">
                     <span className="truncate">{a.name}</span>
-                    <span className="text-[9px] px-1 rounded bg-slate-800 text-slate-400">
-                      :{a.port}
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20 font-bold">
+                      REF
                     </span>
                   </div>
-                  <div className="text-[10px] text-slate-500 mt-1">{a.ip_address}</div>
+                  <div className="text-[10px] text-slate-500 mt-1 truncate">{a.protocol}</div>
                 </button>
               );
             })}
@@ -155,8 +155,8 @@ export const CartographyPage = ({ assets, pathways, threats, onSelectAsset }) =>
               <span className="px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-300 border border-blue-500/30 font-bold">
                 {selectedAsset.protocol}
               </span>
-              <span className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700">
-                {selectedAsset.ip_address}:{selectedAsset.port}
+              <span className="px-2.5 py-1 rounded-lg bg-blue-950/40 text-blue-300 border border-blue-500/30 text-[11px] font-bold">
+                STATIC_REFERENCE (HIPAA Deidentified)
               </span>
             </div>
           </div>
