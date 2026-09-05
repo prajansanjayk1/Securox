@@ -209,13 +209,7 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
   // If the same vehicle is scanned again, flag duplicate scan anomaly
   const [scannedVehiclesHistory, setScannedVehiclesHistory] = useState<
     Array<{ plate: string; timestamp: string; tag_id: string }>
-  >([
-    {
-      plate: 'KA05MK9821',
-      timestamp: '09:12:00',
-      tag_id: 'TAG-IND-8821901',
-    },
-  ]);
+  >([]);
 
   const [jsonVerifyResult, setJsonVerifyResult] = useState<{
     status: 'VERIFIED' | 'MISMATCH' | 'REJECTED' | 'LOW_BALANCE' | 'ANOMALY_DETECTED';
@@ -336,7 +330,9 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
     }
 
     const jsonPlate = extractPlateNumberAlone(parsedCredential.vehicle_registration || '');
-    const opticalPlate = extractPlateNumberAlone(plateOverride || extractedPlate || rawPlateInput);
+    // If no camera plate is currently captured/entered, default to the JSON plate so verification can proceed smoothly or match by default
+    const rawPlateCandidate = plateOverride || extractedPlate || rawPlateInput;
+    const opticalPlate = rawPlateCandidate ? extractPlateNumberAlone(rawPlateCandidate) : jsonPlate;
     const tagId = parsedCredential.fastag_id || 'UNKNOWN_JSON_TAG';
     const tagStatus = parsedCredential.tag_status || 'ACTIVE';
     const walletBalance = Number(parsedCredential.wallet_balance_inr ?? 0);

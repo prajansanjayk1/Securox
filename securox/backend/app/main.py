@@ -8,17 +8,20 @@ FastAPI application exposing:
 """
 
 import sys
+import pathlib
 from pathlib import Path
 
 # Ensure project root and backend directory are on sys.path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 backend_dir = Path(__file__).resolve().parent.parent
 backend_app_dir = Path(__file__).resolve().parent
+FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "securox" / "frontend"
 for p in [str(backend_dir), str(backend_app_dir), str(PROJECT_ROOT)]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
 import asyncio
+import os
 import json
 import logging
 import random

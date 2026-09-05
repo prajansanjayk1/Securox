@@ -459,12 +459,53 @@ class DemoCenterEngine:
         """Broadcasts current step to WebSocket manager."""
         try:
             from main import manager
+            status = self.get_status()
             await manager.broadcast({
                 "type": "demo_center_step",
-                "data": self.get_status()
+                "data": status
             })
-        except Exception:
-            pass  # Fallback gracefully if main / manager not available in test context
+            # Also broadcast risk update to sync citywide risk bars in real-time
+            await manager.broadcast({
+                "type": "risk_update",
+                "data": {
+                    "city_score": status.get("risk", {}).get("current_score", self.current_risk_score),
+                    "risk_score": self.current_risk_score,
+                    "domain": self.category.value
+                }
+            })
+        except Exception as e:
+            logger.debug("Broadcast step exception (safe to ignore in test): %s", e)
+
+    async def _broadcast_alert(self, alert_payload: Dict[str, Any]):
+        """Broadcasts a new security alert to connected WebSocket clients."""
+        try:
+            from main import manager
+            # Broadcast both as 'alert' and as event bus alert structure
+            await manager.broadcast({
+                "type": "alert",
+                "data": alert_payload
+            })
+            await manager.broadcast({
+                "type": "NEW_EVENT",
+                "data": alert_payload
+            })
+        except Exception as e:
+            logger.debug("Broadcast alert exception: %s", e)
+
+    async def _broadcast_incident(self, incident_payload: Dict[str, Any]):
+        """Broadcasts an incident update to connected WebSocket clients."""
+        try:
+            from main import manager
+            await manager.broadcast({
+                "type": "incident_update",
+                "data": incident_payload
+            })
+            await manager.broadcast({
+                "type": "NEW_EVENT",
+                "data": incident_payload
+            })
+        except Exception as e:
+            logger.debug("Broadcast incident exception: %s", e)
 
     async def _execute_stage(self, stage: DemoStage):
         """Executes real backend processing corresponding to each stage."""
@@ -547,6 +588,9 @@ class DemoCenterEngine:
                 self.stage_data[stage.value] = alert_payload
                 if self.mode == DemoMode.ATTACK:
                     self.current_risk_score = 42.0
+
+                # Trigger immediate WebSocket broadcast so SOC, Traffic, Healthcare panels update in real-time
+                await self._broadcast_alert(alert_payload)
             else:
                 self.stage_data[stage.value] = {
                     "detection_status": "NOMINAL_TELEMETRY",
@@ -743,6 +787,24 @@ class DemoCenterEngine:
                 saved_inc = await soc_engine.create_incident(incident_dict)
                 self.active_incident = saved_inc
                 self.stage_data[stage.value] = saved_inc
+
+                # If category is TRAFFIC, also insert into traffic_incidents table so Traffic Operations / Police board updates
+                if cat == DemoCategory.TRAFFIC:
+                    try:
+                        await store.create_traffic_incident({
+                            "title": "SCADA Junction 14 Timing Override Attempt",
+                            "category": "SCADA_TAMPERING",
+                            "severity": "CRITICAL",
+                            "status": "REPORTED",
+                            "location": "Junction 14 - Airport Transit Corridor",
+                            "reported_by": "Zero-Trust SCADA Guard",
+                            "assigned_officer": "traffic_police"
+                        })
+                    except Exception as e:
+                        logger.debug("Failed to create traffic incident: %s", e)
+
+                # Broadcast incident update to all WebSockets
+                await self._broadcast_incident(saved_inc)
             else:
                 self.stage_data[stage.value] = {"incident_status": "NONE", "active": False}
 
@@ -807,6 +869,7 @@ class DemoCenterEngine:
                     resolved_by="ciso_exec"
                 )
                 self.active_incident = res_inc
+                await self._broadcast_incident(res_inc)
             
             # Risk drops to healthy baseline
             self.current_risk_score = 14.2

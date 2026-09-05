@@ -19,16 +19,26 @@ import {
 } from 'lucide-react';
 import { BreakGlassEvent } from '../../../types/healthcare';
 import { healthcareService } from '../../../services/healthcareService';
+import { useWebSocket } from '../../../hooks/useWebSocket';
 
 interface SecuritySubsystemProps {
   userRole: string;
 }
 
 export const SecuritySubsystem: React.FC<SecuritySubsystemProps> = ({ userRole }) => {
+  const { alerts, incidents, cityRisk } = useWebSocket();
   const [breakGlassLogs, setBreakGlassLogs] = useState<BreakGlassEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [simulating, setSimulating] = useState(false);
   const [simResult, setSimResult] = useState<any>(null);
+
+  // Derive active healthcare security alert from live WebSocket alerts or simulation
+  const latestHcAlert = alerts.find(
+    (a) => (a.asset || '').toUpperCase().includes('HEALTHCARE') || (a.attack_type || '').toUpperCase().includes('HEALTHCARE')
+  );
+  const latestHcIncident = incidents.find(
+    (i) => (i.asset || '').toUpperCase().includes('HEALTHCARE') || (i.title || '').toUpperCase().includes('HEALTHCARE')
+  );
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -62,28 +72,28 @@ export const SecuritySubsystem: React.FC<SecuritySubsystemProps> = ({ userRole }
 
   return (
     <div className="space-y-6 font-mono text-xs">
-      {/* Simulation Result Alert Banner */}
-      {simResult && (
-        <div className="bg-rose-950/60 border border-rose-500 rounded-xl p-5 shadow-2xl space-y-3">
+      {/* Live Cyber Threat Alert Banner (from Demo Center simulation or manual trigger) */}
+      {(simResult || latestHcAlert || latestHcIncident) && (
+        <div className="bg-rose-950/70 border border-rose-500 rounded-xl p-5 shadow-2xl space-y-3 animate-fadeIn">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-rose-400 font-bold">
+            <div className="flex items-center gap-2 text-rose-400 font-bold text-sm">
               <ShieldAlert className="w-5 h-5 animate-pulse" />
-              <span>CAREGUARD ZERO-TRUST MASS EXFILTRATION INTERCEPTION</span>
+              <span>CAREGUARD ZERO-TRUST HOSPITAL CYBER-DEFENSE INTERCEPTION</span>
             </div>
-            <span className="text-[10px] bg-rose-900 text-rose-200 px-2 py-0.5 rounded border border-rose-700">
-              BLOCKED
+            <span className="text-[10px] bg-rose-900 text-rose-200 px-2 py-0.5 rounded border border-rose-700 font-bold">
+              {latestHcIncident?.status === 'RESOLVED' ? 'RESOLVED' : 'BLOCKED / MITIGATED'}
             </span>
           </div>
 
-          <p className="text-slate-200 text-xs">
-            <b>Incident:</b> Unauthorized mass bulk clinical records query from anomalous IP 185.220.101.5 (London, UK VPN). Intercepted at database boundary before egress.
+          <p className="text-slate-200 text-xs leading-relaxed">
+            <b>Threat Event:</b> {latestHcAlert?.description || latestHcAlert?.attack_type || simResult?.message || 'Unauthorized mass clinical exfiltration & BOLA privilege escalation detected on EHR_GATEWAY.'}
           </p>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-950/80 p-3 rounded-lg border border-slate-800">
-            <div>Decision: <b className="text-rose-400">{simResult.evaluation?.decision || 'BLOCKED'}</b></div>
-            <div>Risk Score: <b className="text-rose-400">{simResult.evaluation?.risk_score || 94} / 100</b></div>
-            <div>SOC Incident: <b className="text-sky-400">{simResult.evaluation?.incident_id || 'INC-HC-0089'}</b></div>
-            <div>Escalation: <b className="text-emerald-400">Hospital IT Security</b></div>
+            <div>Decision: <b className="text-rose-400">{latestHcIncident?.status === 'RESOLVED' ? 'CONTAINED' : (simResult?.evaluation?.decision || 'BLOCK')}</b></div>
+            <div>Risk Score: <b className="text-rose-400">{Math.round(cityRisk || 75)} / 100</b></div>
+            <div>SOC Incident: <b className="text-sky-400">{latestHcIncident?.id || simResult?.evaluation?.incident_id || latestHcAlert?.id || 'INC-HC-LIVE'}</b></div>
+            <div>Protection: <b className="text-emerald-400">IoMT Ward Isolated</b></div>
           </div>
         </div>
       )}

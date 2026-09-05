@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { trafficService } from '../../services/trafficService';
+import { useWebSocket } from '../../hooks/useWebSocket';
 import {
   TrafficOverview,
   TrafficSignal,
@@ -123,9 +124,20 @@ export const TrafficOperations: React.FC = () => {
     }
   }, []);
 
+  const { alerts: wsAlerts, incidents: wsIncidents } = useWebSocket();
+
   useEffect(() => {
     loadAllTelemetry();
   }, [loadAllTelemetry]);
+
+  // When a live incident or alert arrives over WebSocket, immediately reload traffic incidents
+  useEffect(() => {
+    if (wsAlerts.length > 0 || wsIncidents.length > 0) {
+      trafficService.getIncidents().then((res) => {
+        if (Array.isArray(res)) setIncidents(res);
+      }).catch(() => {});
+    }
+  }, [wsAlerts, wsIncidents]);
 
   // When persona changes, adjust default tab appropriately
   const handlePersonaChange = (p: StakeholderPersona) => {
