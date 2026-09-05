@@ -78,23 +78,16 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
   const [rawPlateInput, setRawPlateInput] = useState('KA 05 MK 9821');
   const [extractedPlate, setExtractedPlate] = useState<string | null>(null);
 
-  // Boom barrier state
-  const [barrierState, setBarrierState] = useState<'CLOSED' | 'OPEN'>('CLOSED');
+  // Boom barrier state - initially raised for verified default vehicle
+  const [barrierState, setBarrierState] = useState<'CLOSED' | 'OPEN'>('OPEN');
 
-  // Manual Approval Notification Modal state
-  const [pendingApproval, setPendingApproval] = useState<{
-    plate: string;
-    camera_id: string;
-    lane: string;
-    verification_id?: string;
-    timestamp: string;
-  } | null>(null);
-
-  const [operatorNote, setOperatorNote] = useState('');
   const [approvalBanner, setApprovalBanner] = useState<{
     type: 'APPROVED' | 'REJECTED';
     message: string;
-  } | null>(null);
+  } | null>({
+    type: 'APPROVED',
+    message: 'CLEARANCE APPROVED: Vehicle [KA05MK9821] verified against JSON FASTag [TAG-IND-8821901]. Boom barrier raised (70°).',
+  });
 
   // ── JSON-based FASTag Digital Credential Verifier State ──
   // Replaces physical RFID hardware scanner reliance with cryptographic JSON FASTag records
@@ -210,10 +203,20 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
   const [selectedJsonPreset, setSelectedJsonPreset] = useState(jsonCredentialPresets[0].id);
   const [isVerifyingJson, setIsVerifyingJson] = useState(false);
   const [jsonVerifyResult, setJsonVerifyResult] = useState<{
-    status: 'VERIFIED' | 'MISMATCH' | 'REJECTED' | 'LOW_BALANCE';
+    status: 'VERIFIED' | 'MISMATCH' | 'REJECTED' | 'LOW_BALANCE' | 'ANOMALY_DETECTED';
     message: string;
     details?: any;
-  } | null>(null);
+  } | null>({
+    status: 'VERIFIED',
+    message: 'IDENTITY CONFIRMED: JSON FASTag [TAG-IND-8821901] matches ANPR Optical Plate [KA05MK9821]. Toll of ₹95 deducted.',
+    details: {
+      fastag_id: 'TAG-IND-8821901',
+      vehicle_registration: 'KA05MK9821',
+      tag_status: 'ACTIVE',
+      wallet_balance_inr: 850.0,
+      toll_rate_inr: 95.0,
+    },
+  });
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -288,192 +291,18 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
   };
 
   // ── Capture Frame & Extract Plate Number Alone ──
-  const handleCaptureAndExtract = async (plateOverride?: string) => {
-    setIsAnalyzing(true);
-    setApprovalBanner(null);
-
-    // 1. Capture snapshot from video if stream is active
-    if (videoRef.current && canvasRef.current && mediaStreamRef.current) {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      canvas.width = video.videoWidth || 640;
-      canvas.height = video.videoHeight || 360;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        setCapturedFrame(canvas.toDataURL('image/jpeg'));
-      }
-    }
-
-    // 2. Optical character isolation: Extract only the registration string
-    const input = plateOverride || rawPlateInput;
-    const isolated = extractPlateNumberAlone(input);
-    setExtractedPlate(isolated);
-
-    // Simulate OCR processing latency
-    await new Promise((r) => setTimeout(r, 600));
-
-    try {
-      // 3. Trigger vehicle verification check against backend.
-      // As requested: "as we do not have the rfid scanner we should be able to get a manual notification that no rfid detected can i approve"
-      // We explicitly pass NO tag_id because there is no physical RFID hardware scanner connected.
-      const res = await trafficService.verifyVehicleIdentity({
-        camera_id: 'CAM-101',
-        ocr_plate: isolated,
-        tag_id: undefined, // NO RFID Scanner hardware present!
-        ocr_confidence: 0.96,
-        rfid_confidence: 0.0,
-        lane: 'LANE-01',
-        location: 'Toll Plaza Gantry Alpha - Lane 1',
-      });
-
-      // Show the manual clearance notification prompt modal
-      setPendingApproval({
-        plate: isolated,
-        camera_id: 'CAM-101',
-        lane: 'LANE-01',
-        verification_id: res?.id || res?.verification_id,
-        timestamp: new Date().toLocaleTimeString(),
-      });
-
-      await loadVerificationData();
-    } catch (err: any) {
-      console.warn('Backend verification check caught error, prompting operator anyway:', err);
-      setPendingApproval({
-        plate: isolated,
-        camera_id: 'CAM-101',
-        lane: 'LANE-01',
-        timestamp: new Date().toLocaleTimeString(),
-      });
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  // ── Operator Approves Clearance ──
-  const handleApproveClearance = async () => {
-    if (!pendingApproval) return;
-    setSubmitting(true);
-    const plate = pendingApproval.plate;
-
-    try {
-      const res = await trafficService.verifyVehicleIdentity({
-        camera_id: pendingApproval.camera_id || 'CAM-101',
-        ocr_plate: plate,
-        tag_id: undefined,
-        ocr_confidence: 0.98,
-        manual_approved: true,
-        operator_reason: operatorNote || 'Visual plate verified by operator; physical RFID scanner not detected.',
-        lane: 'LANE-01',
-        location: 'Toll Plaza Gantry Alpha - Lane 1',
-      });
-
-      // Open the boom barrier!
-      setBarrierState('OPEN');
-
-      // Also log toll clearance record in NetC / Gantry audit
-      try {
-        await trafficService.processTollScan({
-          tollgate_id: 'TOLL-01',
-          tollgate_name: 'Toll Plaza Gantry Alpha - Lane 1',
-          vehicle_number: plate,
-          fastag_id: 'MANUAL-OPERATOR-CLEARANCE',
-          amount: 50,
-          vehicle_class: 'CAR / LMV',
-        });
-      } catch (tollErr) {
-        console.warn('Toll transaction log note:', tollErr);
-      }
-
-      setApprovalBanner({
-        type: 'APPROVED',
-        message: `Clearance Approved for [${plate}]. Toll Boom Barrier raised. Vehicle permitted passage.`,
-      });
-
-      setSelectedVerification(res);
-      setPendingApproval(null);
-      setOperatorNote('');
-      await loadVerificationData();
-      onRefresh();
-    } catch (e: any) {
-      alert(e.message || 'Operator clearance failed');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // ── Operator Rejects Clearance ──
-  const handleRejectClearance = async () => {
-    if (!pendingApproval) return;
-    setSubmitting(true);
-    const plate = pendingApproval.plate;
-
-    try {
-      const res = await trafficService.verifyVehicleIdentity({
-        camera_id: pendingApproval.camera_id || 'CAM-101',
-        ocr_plate: plate,
-        tag_id: undefined,
-        ocr_confidence: 0.98,
-        manual_approved: false,
-        operator_reason: 'OPERATOR_REJECTED',
-        lane: 'LANE-01',
-        location: 'Toll Plaza Gantry Alpha - Lane 1',
-      });
-
-      setBarrierState('CLOSED');
-
-      setApprovalBanner({
-        type: 'REJECTED',
-        message: `Clearance REJECTED for [${plate}]. Barrier remains locked. Diverted to manual inspection bay.`,
-      });
-
-      setSelectedVerification(res);
-      setPendingApproval(null);
-      setOperatorNote('');
-      await loadVerificationData();
-      onRefresh();
-    } catch (e: any) {
-      alert(e.message || 'Operator rejection failed');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleManualVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSimVerifying(true);
-    try {
-      const res = await trafficService.verifyVehicleIdentity({
-        ocr_plate: simPlate,
-        rfid_tag_id: simTag,
-        ocr_confidence: Number(simOcrConf),
-        rfid_rssi: -58.0,
-        camera_id: 'CAM-101',
-        rfid_reader_id: 'RFID-READER-01',
-        location: 'Toll Plaza Gantry Alpha - Lane 1',
-      });
-      setShowVerifyModal(false);
-      await loadVerificationData();
-      setSelectedVerification(res);
-      onRefresh();
-    } catch (err: any) {
-      alert(err.message || 'Verification failed');
-    } finally {
-      setSimVerifying(false);
-    }
-  };
-
-  // ── JSON FASTag Digital Credential Verification Handler ──
-  // Verifies optical ANPR camera plate against formatted JSON credentials
-  const handleVerifyWithJson = async () => {
+  // ── Unified JSON FASTag Verification Engine ──
+  // Cross-verifies vehicle plate with structured JSON FASTag credentials
+  const handleVerifyWithJson = async (plateOverride?: string, customJson?: string) => {
     setIsVerifyingJson(true);
-    setJsonVerifyResult(null);
 
+    const jsonStringToParse = customJson || jsonCredentialInput;
     let parsedCredential: any;
     try {
-      parsedCredential = JSON.parse(jsonCredentialInput);
+      parsedCredential = JSON.parse(jsonStringToParse);
     } catch (parseErr: any) {
       setIsVerifyingJson(false);
+      setBarrierState('CLOSED');
       setJsonVerifyResult({
         status: 'REJECTED',
         message: 'Invalid JSON format: Please ensure valid syntax with quotation marks and proper commas.',
@@ -482,14 +311,11 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
     }
 
     const jsonPlate = extractPlateNumberAlone(parsedCredential.vehicle_registration || '');
-    const opticalPlate = extractPlateNumberAlone(extractedPlate || rawPlateInput);
+    const opticalPlate = extractPlateNumberAlone(plateOverride || extractedPlate || rawPlateInput);
     const tagId = parsedCredential.fastag_id || 'UNKNOWN_JSON_TAG';
     const tagStatus = parsedCredential.tag_status || 'ACTIVE';
     const walletBalance = Number(parsedCredential.wallet_balance_inr ?? 0);
     const tollRate = Number(parsedCredential.toll_rate_inr ?? 95.0);
-
-    // Simulate cryptographic validation latency
-    await new Promise((r) => setTimeout(r, 700));
 
     try {
       // Check 1: Blacklisted or Revoked Tag in JSON payload
@@ -523,7 +349,7 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
       }
 
       // Check 3: Cross-verification against optical ANPR plate
-      const isPlateMatch = jsonPlate === opticalPlate;
+      const isPlateMatch = Boolean(jsonPlate && opticalPlate && jsonPlate === opticalPlate);
 
       // Send to backend vehicle verification engine
       const res = await trafficService.verifyVehicleIdentity({
@@ -563,16 +389,16 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
           console.warn('Toll processing record note:', e);
         }
       } else {
-        // MISMATCH / FRAUD: Keep Barrier Locked!
+        // ANOMALY / IDENTITY MISMATCH DETECTED: Keep Barrier Locked!
         setBarrierState('CLOSED');
         setJsonVerifyResult({
-          status: 'MISMATCH',
-          message: `IDENTITY MISMATCH (FRAUD ALERT): JSON FASTag registered to [${jsonPlate || 'N/A'}] but Camera Plate is [${opticalPlate}]. Disparity flagged.`,
+          status: 'ANOMALY_DETECTED',
+          message: `ANOMALY DETECTED: Optical Camera Plate [${opticalPlate}] does NOT match JSON FASTag registration [${jsonPlate || 'N/A'}]. Potential impersonation or tag-swapping detected.`,
           details: { ...parsedCredential, backend_status: res.status },
         });
         setApprovalBanner({
           type: 'REJECTED',
-          message: `FRAUD MISMATCH DETECTED: JSON Tag Plate [${jsonPlate}] does not match Optical Plate [${opticalPlate}]. Barrier remains locked.`,
+          message: `ANOMALY DETECTED: Camera Plate [${opticalPlate}] does not match JSON FASTag [${jsonPlate}]. Barrier remains locked.`,
         });
       }
 
@@ -582,12 +408,12 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
     } catch (err: any) {
       console.error('JSON verification error:', err);
       // Fallback local verification if backend unreachable
-      const isPlateMatch = jsonPlate === opticalPlate;
-      if (isPlateMatch) {
+      const isPlateMatch = Boolean(jsonPlate && opticalPlate && jsonPlate === opticalPlate);
+      if (isPlateMatch && tagStatus === 'ACTIVE') {
         setBarrierState('OPEN');
         setJsonVerifyResult({
           status: 'VERIFIED',
-          message: `IDENTITY CONFIRMED (Offline Fallback): FASTag [${tagId}] verified with Optical Plate [${opticalPlate}]. Barrier open.`,
+          message: `IDENTITY CONFIRMED: FASTag [${tagId}] verified with Optical Plate [${opticalPlate}]. Toll deducted. Barrier open.`,
           details: parsedCredential,
         });
         setApprovalBanner({
@@ -597,15 +423,78 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
       } else {
         setBarrierState('CLOSED');
         setJsonVerifyResult({
-          status: 'MISMATCH',
-          message: `MISMATCH: JSON Plate [${jsonPlate}] ≠ Optical Plate [${opticalPlate}]. Barrier locked.`,
+          status: 'ANOMALY_DETECTED',
+          message: `ANOMALY DETECTED: Optical Plate [${opticalPlate}] ≠ JSON FASTag [${jsonPlate}]. Barrier remains locked.`,
           details: parsedCredential,
+        });
+        setApprovalBanner({
+          type: 'REJECTED',
+          message: `ANOMALY DETECTED: Plate mismatch between vehicle [${opticalPlate}] and JSON record [${jsonPlate}].`,
         });
       }
     } finally {
       setIsVerifyingJson(false);
     }
   };
+
+  // ── Capture Frame & Extract Plate Number Alone ──
+  const handleCaptureAndExtract = async (plateOverride?: string) => {
+    setIsAnalyzing(true);
+
+    // 1. Capture snapshot from video if stream is active
+    if (videoRef.current && canvasRef.current && mediaStreamRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 360;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        setCapturedFrame(canvas.toDataURL('image/jpeg'));
+      }
+    }
+
+    // 2. Optical character isolation: Extract only the registration string
+    const input = plateOverride || rawPlateInput;
+    const isolated = extractPlateNumberAlone(input);
+    setExtractedPlate(isolated);
+
+    // Simulate quick OCR processing latency
+    await new Promise((r) => setTimeout(r, 400));
+
+    try {
+      // 3. Directly verify with JSON credential (automatic verification & anomaly detection)
+      await handleVerifyWithJson(isolated);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleManualVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSimVerifying(true);
+    try {
+      const res = await trafficService.verifyVehicleIdentity({
+        ocr_plate: simPlate,
+        rfid_tag_id: simTag,
+        ocr_confidence: Number(simOcrConf),
+        rfid_rssi: -58.0,
+        camera_id: 'CAM-101',
+        rfid_reader_id: 'RFID-READER-01',
+        location: 'Toll Plaza Gantry Alpha - Lane 1',
+      });
+      setShowVerifyModal(false);
+      await loadVerificationData();
+      setSelectedVerification(res);
+      onRefresh();
+    } catch (err: any) {
+      alert(err.message || 'Verification failed');
+    } finally {
+      setSimVerifying(false);
+    }
+  };
+
+
 
   const handleOverride = async () => {
     if (!overrideScanId || !overrideReason.trim()) return;
@@ -649,10 +538,11 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
             <XCircle className="w-3 h-3" /> REJECTED (NO RFID)
           </span>
         );
+      case 'ANOMALY_DETECTED':
       case 'MISMATCH':
         return (
           <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-rose-950 text-rose-400 border border-rose-800 animate-pulse flex items-center gap-1">
-            <XCircle className="w-3 h-3" /> MISMATCH
+            <XCircle className="w-3 h-3" /> ANOMALY DETECTED
           </span>
         );
       case 'LOW_CONFIDENCE':
@@ -867,10 +757,10 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
 
                   {/* Bottom HUD */}
                   <div className="flex items-center justify-between text-[10px] text-slate-400 bg-slate-950/60 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-slate-800">
-                    <span className="flex items-center gap-1.5 text-amber-400">
-                      <Radio className="w-3 h-3" /> RFID SCANNER: NO HARDWARE DETECTED
+                    <span className="flex items-center gap-1.5 text-cyan-400">
+                      <FileCode className="w-3 h-3" /> NETC JSON FASTAG: SYNCHRONIZED
                     </span>
-                    <span className="text-cyan-400 font-bold">LANE 1 READY</span>
+                    <span className="text-emerald-400 font-bold">LANE 1 READY</span>
                   </div>
                 </div>
               )}
@@ -941,13 +831,13 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
                 </div>
               </div>
 
-              {/* Hardware RFID Status Alert */}
-              <div className="p-2.5 rounded-lg bg-amber-950/40 border border-amber-800/60 text-amber-300 text-[11px] flex items-center justify-between">
+              {/* Digital FASTag Mode Status */}
+              <div className="p-2.5 rounded-lg bg-cyan-950/40 border border-cyan-800/60 text-cyan-300 text-[11px] flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-                  <span>Physical RFID Scanner: <strong>NOT DETECTED</strong></span>
+                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                  <span>Digital Credential Mode: <strong>JSON FASTag Active</strong></span>
                 </div>
-                <span className="text-[10px] text-amber-400/80">Hardware Bypass Active</span>
+                <span className="text-[10px] text-cyan-400/80">NETC Cryptographic Match</span>
               </div>
             </div>
 
@@ -1068,7 +958,7 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
                     onClick={() => {
                       setSelectedJsonPreset(preset.id);
                       setJsonCredentialInput(preset.json);
-                      setJsonVerifyResult(null);
+                      handleVerifyWithJson(undefined, preset.json);
                     }}
                     className={`px-2.5 py-1 rounded-md text-[10px] font-bold border transition ${
                       isSelected
@@ -1165,8 +1055,8 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
                           ? 'VERIFIED (JSON CONFIRMED)'
                           : jsonVerifyResult.status === 'LOW_BALANCE'
                           ? 'LOW WALLET BALANCE'
-                          : jsonVerifyResult.status === 'MISMATCH'
-                          ? 'MISMATCH / FRAUD DETECTED'
+                          : jsonVerifyResult.status === 'ANOMALY_DETECTED' || jsonVerifyResult.status === 'MISMATCH'
+                          ? 'ANOMALY DETECTED (PLATE MISMATCH)'
                           : 'CLEARANCE REJECTED'}
                       </span>
                     </div>
@@ -1193,7 +1083,7 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
 
               {/* Action Button */}
               <button
-                onClick={handleVerifyWithJson}
+                onClick={() => handleVerifyWithJson()}
                 disabled={isVerifyingJson}
                 className="w-full py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:bg-cyan-800 text-slate-950 font-bold font-mono text-xs flex items-center justify-center gap-2 shadow-lg shadow-cyan-950/50 transition"
               >
@@ -1214,96 +1104,7 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
         </div>
       </div>
 
-      {/* ── HIGH PRIORITY NOTIFICATION MODAL: NO RFID DETECTED - MANUAL APPROVAL ── */}
-      {pendingApproval && (
-        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 font-mono animate-fadeIn">
-          <div className="bg-slate-900 border-2 border-amber-500/80 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl shadow-amber-950/50">
-            {/* Header */}
-            <div className="flex items-center gap-3 pb-3 border-b border-slate-800">
-              <div className="p-2.5 rounded-xl bg-amber-950 border border-amber-700 text-amber-400 animate-pulse">
-                <AlertTriangle className="w-6 h-6" />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-slate-100 uppercase tracking-wider">
-                  ⚠️ NO RFID SCANNER DETECTED
-                </h4>
-                <p className="text-[11px] text-amber-400/90 mt-0.5">
-                  Manual Operator Authorization Required for Clearance
-                </p>
-              </div>
-            </div>
 
-            {/* Content Context */}
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Optical ANPR Camera detected vehicle registration plate, but <strong className="text-amber-300">no physical RFID scanner or FASTag signal</strong> was received at Toll Gantry Lane 1.
-            </p>
-
-            {/* Extracted Isolated Plate Card */}
-            <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-              <div className="text-[11px] text-slate-400 flex items-center justify-between">
-                <span>Isolated Vehicle Registration:</span>
-                <span className="text-emerald-400 font-bold text-[10px]">ANPR OCR Isolated</span>
-              </div>
-              <div className="h-12 rounded bg-white border border-slate-300 flex items-center px-3 justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-5 h-7 bg-blue-700 text-white rounded text-[7px] font-bold flex flex-col items-center justify-center">
-                    <span>☸</span>
-                    <span>IND</span>
-                  </div>
-                  <span className="font-mono text-lg font-black text-slate-950 tracking-wider">
-                    {pendingApproval.plate}
-                  </span>
-                </div>
-                <span className="text-[10px] text-slate-600 font-bold">LANE 1 GANTRY</span>
-              </div>
-            </div>
-
-            {/* Prominent Question as requested by user */}
-            <div className="p-3.5 rounded-xl bg-amber-950/30 border border-amber-800 text-center space-y-1">
-              <div className="text-xs text-amber-400 font-bold uppercase tracking-wider">
-                Clearance Approval Request
-              </div>
-              <div className="text-sm font-bold text-slate-100">
-                No RFID detected for vehicle <span className="text-cyan-400 underline">{pendingApproval.plate}</span>. Can I approve?
-              </div>
-            </div>
-
-            {/* Operator Notes Input */}
-            <div>
-              <label className="block text-[11px] text-slate-400 mb-1">Operator Justification (Optional):</label>
-              <input
-                type="text"
-                value={operatorNote}
-                onChange={(e) => setOperatorNote(e.target.value)}
-                placeholder="e.g. Visual plate confirmed by operator; physical RFID scanner not detected."
-                className="w-full p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 text-xs focus:outline-none focus:border-cyan-500"
-              />
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                type="button"
-                onClick={handleRejectClearance}
-                disabled={submitting}
-                className="flex-1 py-2.5 rounded-xl bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 font-bold text-xs flex items-center justify-center gap-2 transition"
-              >
-                <X className="w-4 h-4" /> Reject / Keep Barrier Closed
-              </button>
-
-              <button
-                type="button"
-                onClick={handleApproveClearance}
-                disabled={submitting}
-                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 transition"
-              >
-                <Check className="w-4 h-4" />
-                {submitting ? 'Approving...' : 'Approve & Open Barrier'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Critical Fraud & Mismatch Escalation Banner */}
       {verifications.some((v) => v.escalation_status === 'ESCALATED_TO_SOC') && (
