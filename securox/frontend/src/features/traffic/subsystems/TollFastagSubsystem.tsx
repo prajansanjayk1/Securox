@@ -26,6 +26,7 @@ import {
   KeyRound,
   CheckSquare,
   History,
+  RotateCcw,
 } from 'lucide-react';
 
 interface Props {
@@ -235,6 +236,16 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
+
+  // Reset vehicle entry to clean state for next vehicle
+  const handleResetVehicleEntry = () => {
+    setRawPlateInput('');
+    setExtractedPlate(null);
+    setCapturedFrame(null);
+    setJsonVerifyResult(null);
+    setApprovalBanner(null);
+    setBarrierState('CLOSED');
+  };
 
   const loadVerificationData = async () => {
     try {
@@ -746,6 +757,16 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
               </button>
             )}
 
+            {/* Reset Vehicle Entry button */}
+            <button
+              onClick={handleResetVehicleEntry}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-xs border bg-slate-900 border-slate-700 text-slate-300 hover:text-cyan-300 hover:border-cyan-600 hover:bg-slate-800 transition shadow-sm"
+              title="Reset vehicle entry: clears plate input, captured frame, extracted plate, and verification results"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
+              Reset Vehicle Entry
+            </button>
+
             {/* Barrier Reset Toggle */}
             <button
               onClick={() => setBarrierState((prev) => (prev === 'CLOSED' ? 'OPEN' : 'CLOSED'))}
@@ -997,6 +1018,14 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
               className="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold text-xs transition"
             >
               Process Plate
+            </button>
+            <button
+              onClick={handleResetVehicleEntry}
+              className="px-3 py-2 rounded-lg bg-slate-850 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-rose-300 font-mono text-xs flex items-center gap-1.5 transition"
+              title="Reset current vehicle entry"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+              Reset
             </button>
           </div>
         </div>
