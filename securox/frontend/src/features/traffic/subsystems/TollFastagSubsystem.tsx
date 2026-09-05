@@ -21,6 +21,10 @@ import {
   X,
   Upload,
   Sparkles,
+  FileCode,
+  Copy,
+  KeyRound,
+  CheckSquare,
 } from 'lucide-react';
 
 interface Props {
@@ -90,6 +94,125 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
   const [approvalBanner, setApprovalBanner] = useState<{
     type: 'APPROVED' | 'REJECTED';
     message: string;
+  } | null>(null);
+
+  // ── JSON-based FASTag Digital Credential Verifier State ──
+  // Replaces physical RFID hardware scanner reliance with cryptographic JSON FASTag records
+  const jsonCredentialPresets = [
+    {
+      id: 'KA05MK9821_VALID',
+      label: 'KA 05 MK 9821 (Matching & Active)',
+      type: 'MATCH',
+      json: JSON.stringify(
+        {
+          fastag_id: 'TAG-IND-8821901',
+          vehicle_registration: 'KA05MK9821',
+          owner_name: 'Aditya Sharma',
+          vehicle_class: 'VC4_PASSENGER_CAR',
+          issuer_bank: 'HDFC_NETC_GATEWAY',
+          wallet_balance_inr: 850.0,
+          tag_status: 'ACTIVE',
+          security_algorithm: 'EPC_GEN2_AES128',
+          digital_signature: 'sha256:7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069',
+          toll_rate_inr: 95.0,
+        },
+        null,
+        2
+      ),
+    },
+    {
+      id: 'MH12DE1433_VALID',
+      label: 'MH 12 DE 1433 (Matching & Active)',
+      type: 'MATCH',
+      json: JSON.stringify(
+        {
+          fastag_id: 'TAG-98231',
+          vehicle_registration: 'MH12DE1433',
+          owner_name: 'Pooja Kulkarni',
+          vehicle_class: 'VC4_PASSENGER_CAR',
+          issuer_bank: 'ICICI_NETC_HUB',
+          wallet_balance_inr: 1240.5,
+          tag_status: 'ACTIVE',
+          security_algorithm: 'EPC_GEN2_AES128',
+          digital_signature: 'sha256:3d28f89e1a8a3c9e6bb07e4d8ef92d3c50989f6d149021bf907335ce50811776',
+          toll_rate_inr: 95.0,
+        },
+        null,
+        2
+      ),
+    },
+    {
+      id: 'MISMATCH_CLONED',
+      label: 'CLONED TAG / MISMATCH (Fraud Alert)',
+      type: 'FRAUD_MISMATCH',
+      json: JSON.stringify(
+        {
+          fastag_id: 'TAG-CLONED-9988',
+          vehicle_registration: 'DL04C9988',
+          owner_name: 'Suspicious Fleet Operator',
+          vehicle_class: 'VC4_PASSENGER_CAR',
+          issuer_bank: 'PAYTM_PAYMENTS_BANK',
+          wallet_balance_inr: 320.0,
+          tag_status: 'SUSPICIOUS_DUPLICATE',
+          security_algorithm: 'EMULATED_KEY_DETECTED',
+          digital_signature: 'sha256:0000000000000000000000000000000000000000000000000000000000000000',
+          toll_rate_inr: 95.0,
+        },
+        null,
+        2
+      ),
+    },
+    {
+      id: 'BLACKLISTED_STOLEN',
+      label: 'BLACKLISTED / STOLEN (Barred Tag)',
+      type: 'BLACKLISTED',
+      json: JSON.stringify(
+        {
+          fastag_id: 'TAG-IND-3341829',
+          vehicle_registration: 'KA05NB9901',
+          owner_name: 'Flagged Watchlist Record',
+          vehicle_class: 'VC4_PASSENGER_CAR',
+          issuer_bank: 'SBI_FASTAG_DIRECT',
+          wallet_balance_inr: 0.0,
+          tag_status: 'BLACKLISTED',
+          security_algorithm: 'REVOKED_CERTIFICATE',
+          digital_signature: 'sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+          toll_rate_inr: 95.0,
+        },
+        null,
+        2
+      ),
+    },
+    {
+      id: 'LOW_BALANCE',
+      label: 'INSUFFICIENT BALANCE (₹12 Remaining)',
+      type: 'LOW_BALANCE',
+      json: JSON.stringify(
+        {
+          fastag_id: 'TAG-1036',
+          vehicle_registration: 'TN70DY8744',
+          owner_name: 'Ramesh Sundaram',
+          vehicle_class: 'VC4_PASSENGER_CAR',
+          issuer_bank: 'AXIS_NETC_SWITCH',
+          wallet_balance_inr: 12.0,
+          tag_status: 'LOW_BALANCE',
+          security_algorithm: 'EPC_GEN2_AES128',
+          digital_signature: 'sha256:5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8',
+          toll_rate_inr: 95.0,
+        },
+        null,
+        2
+      ),
+    },
+  ];
+
+  const [jsonCredentialInput, setJsonCredentialInput] = useState(jsonCredentialPresets[0].json);
+  const [selectedJsonPreset, setSelectedJsonPreset] = useState(jsonCredentialPresets[0].id);
+  const [isVerifyingJson, setIsVerifyingJson] = useState(false);
+  const [jsonVerifyResult, setJsonVerifyResult] = useState<{
+    status: 'VERIFIED' | 'MISMATCH' | 'REJECTED' | 'LOW_BALANCE';
+    message: string;
+    details?: any;
   } | null>(null);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -337,6 +460,150 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
       alert(err.message || 'Verification failed');
     } finally {
       setSimVerifying(false);
+    }
+  };
+
+  // ── JSON FASTag Digital Credential Verification Handler ──
+  // Verifies optical ANPR camera plate against formatted JSON credentials
+  const handleVerifyWithJson = async () => {
+    setIsVerifyingJson(true);
+    setJsonVerifyResult(null);
+
+    let parsedCredential: any;
+    try {
+      parsedCredential = JSON.parse(jsonCredentialInput);
+    } catch (parseErr: any) {
+      setIsVerifyingJson(false);
+      setJsonVerifyResult({
+        status: 'REJECTED',
+        message: 'Invalid JSON format: Please ensure valid syntax with quotation marks and proper commas.',
+      });
+      return;
+    }
+
+    const jsonPlate = extractPlateNumberAlone(parsedCredential.vehicle_registration || '');
+    const opticalPlate = extractPlateNumberAlone(extractedPlate || rawPlateInput);
+    const tagId = parsedCredential.fastag_id || 'UNKNOWN_JSON_TAG';
+    const tagStatus = parsedCredential.tag_status || 'ACTIVE';
+    const walletBalance = Number(parsedCredential.wallet_balance_inr ?? 0);
+    const tollRate = Number(parsedCredential.toll_rate_inr ?? 95.0);
+
+    // Simulate cryptographic validation latency
+    await new Promise((r) => setTimeout(r, 700));
+
+    try {
+      // Check 1: Blacklisted or Revoked Tag in JSON payload
+      if (tagStatus === 'BLACKLISTED' || tagStatus === 'REVOKED' || tagStatus === 'STOLEN') {
+        setBarrierState('CLOSED');
+        setJsonVerifyResult({
+          status: 'REJECTED',
+          message: `SECURITY ALERT: FASTag [${tagId}] is flagged as ${tagStatus} in NETC Registry. Vehicle barred.`,
+          details: parsedCredential,
+        });
+        setApprovalBanner({
+          type: 'REJECTED',
+          message: `FASTag [${tagId}] is BLACKLISTED / STOLEN. Boom barrier locked. Security notified.`,
+        });
+        return;
+      }
+
+      // Check 2: Low Wallet Balance in JSON payload
+      if (walletBalance < tollRate) {
+        setBarrierState('CLOSED');
+        setJsonVerifyResult({
+          status: 'LOW_BALANCE',
+          message: `TRANSACTION DECLINED: FASTag wallet balance (₹${walletBalance.toFixed(2)}) is lower than toll fare (₹${tollRate.toFixed(2)}).`,
+          details: parsedCredential,
+        });
+        setApprovalBanner({
+          type: 'REJECTED',
+          message: `Insufficient FASTag Balance (₹${walletBalance.toFixed(2)}). Toll barrier closed. Please recharge wallet.`,
+        });
+        return;
+      }
+
+      // Check 3: Cross-verification against optical ANPR plate
+      const isPlateMatch = jsonPlate === opticalPlate;
+
+      // Send to backend vehicle verification engine
+      const res = await trafficService.verifyVehicleIdentity({
+        camera_id: 'CAM-101',
+        tag_id: tagId,
+        ocr_plate: opticalPlate,
+        ocr_confidence: 0.96,
+        rfid_confidence: isPlateMatch ? 0.99 : 0.40,
+        lane: 'LANE-01',
+        location: 'Toll Plaza Gantry Alpha - Lane 1',
+      });
+
+      if (isPlateMatch && tagStatus === 'ACTIVE') {
+        // MATCH: Open Boom Barrier!
+        setBarrierState('OPEN');
+        setJsonVerifyResult({
+          status: 'VERIFIED',
+          message: `IDENTITY CONFIRMED: JSON FASTag [${tagId}] matches ANPR Optical Plate [${opticalPlate}]. Toll of ₹${tollRate} deducted.`,
+          details: { ...parsedCredential, backend_status: res.status },
+        });
+        setApprovalBanner({
+          type: 'APPROVED',
+          message: `CLEARANCE APPROVED: Vehicle [${opticalPlate}] verified against JSON FASTag [${tagId}]. Boom barrier raised (70°).`,
+        });
+
+        // Record toll transaction
+        try {
+          await trafficService.processTollScan({
+            tollgate_id: 'TOLL-01',
+            tollgate_name: 'Airport Express Plaza Gantry 1',
+            vehicle_number: opticalPlate,
+            fastag_id: tagId,
+            amount: tollRate,
+            vehicle_class: parsedCredential.vehicle_class || 'CAR / LMV',
+          });
+        } catch (e) {
+          console.warn('Toll processing record note:', e);
+        }
+      } else {
+        // MISMATCH / FRAUD: Keep Barrier Locked!
+        setBarrierState('CLOSED');
+        setJsonVerifyResult({
+          status: 'MISMATCH',
+          message: `IDENTITY MISMATCH (FRAUD ALERT): JSON FASTag registered to [${jsonPlate || 'N/A'}] but Camera Plate is [${opticalPlate}]. Disparity flagged.`,
+          details: { ...parsedCredential, backend_status: res.status },
+        });
+        setApprovalBanner({
+          type: 'REJECTED',
+          message: `FRAUD MISMATCH DETECTED: JSON Tag Plate [${jsonPlate}] does not match Optical Plate [${opticalPlate}]. Barrier remains locked.`,
+        });
+      }
+
+      setSelectedVerification(res);
+      await loadVerificationData();
+      onRefresh();
+    } catch (err: any) {
+      console.error('JSON verification error:', err);
+      // Fallback local verification if backend unreachable
+      const isPlateMatch = jsonPlate === opticalPlate;
+      if (isPlateMatch) {
+        setBarrierState('OPEN');
+        setJsonVerifyResult({
+          status: 'VERIFIED',
+          message: `IDENTITY CONFIRMED (Offline Fallback): FASTag [${tagId}] verified with Optical Plate [${opticalPlate}]. Barrier open.`,
+          details: parsedCredential,
+        });
+        setApprovalBanner({
+          type: 'APPROVED',
+          message: `CLEARANCE APPROVED: Vehicle [${opticalPlate}] verified via JSON credential.`,
+        });
+      } else {
+        setBarrierState('CLOSED');
+        setJsonVerifyResult({
+          status: 'MISMATCH',
+          message: `MISMATCH: JSON Plate [${jsonPlate}] ≠ Optical Plate [${opticalPlate}]. Barrier locked.`,
+          details: parsedCredential,
+        });
+      }
+    } finally {
+      setIsVerifyingJson(false);
     }
   };
 
@@ -767,6 +1034,182 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
             >
               Process Plate
             </button>
+          </div>
+        </div>
+
+        {/* ── JSON-BASED FASTAG DIGITAL CREDENTIAL CONFIRMATION & VERIFICATION ── */}
+        <div className="mt-6 pt-5 border-t-2 border-slate-800/80 space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-cyan-950 border border-cyan-800 text-cyan-400">
+                  <FileCode className="w-4 h-4" />
+                </span>
+                <h5 className="font-bold text-slate-100 text-xs tracking-wider uppercase flex items-center gap-2">
+                  JSON FASTag Digital Credential Verifier
+                  <span className="px-2 py-0.5 rounded text-[10px] bg-cyan-950 text-cyan-400 border border-cyan-800 font-normal">
+                    RFID Hardware Substitute
+                  </span>
+                </h5>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Instead of physical RFID reader hardware, confirm vehicle identity directly against structured JSON NETC records. Cross-verifies plate against camera OCR & operates boom barrier.
+              </p>
+            </div>
+
+            {/* Quick Preset Selector */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] text-slate-400 font-bold">Select JSON Preset:</span>
+              {jsonCredentialPresets.map((preset) => {
+                const isSelected = selectedJsonPreset === preset.id;
+                return (
+                  <button
+                    key={preset.id}
+                    onClick={() => {
+                      setSelectedJsonPreset(preset.id);
+                      setJsonCredentialInput(preset.json);
+                      setJsonVerifyResult(null);
+                    }}
+                    className={`px-2.5 py-1 rounded-md text-[10px] font-bold border transition ${
+                      isSelected
+                        ? 'bg-cyan-950 border-cyan-500 text-cyan-300 shadow-sm'
+                        : 'bg-slate-950/80 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                    }`}
+                  >
+                    {preset.id.startsWith('KA05')
+                      ? 'KA 05 (Valid)'
+                      : preset.id.startsWith('MH12')
+                      ? 'MH 12 (Valid)'
+                      : preset.id.startsWith('MISMATCH')
+                      ? '⚠️ Cloned / Mismatch'
+                      : preset.id.startsWith('BLACKLISTED')
+                      ? '🚫 Blacklisted'
+                      : '₹ Low Balance'}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* JSON Editor + Live Evaluation Console */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            {/* JSON Payload Editor (7 cols) */}
+            <div className="lg:col-span-7 flex flex-col space-y-2">
+              <div className="flex items-center justify-between text-[11px] text-slate-400">
+                <span className="flex items-center gap-1.5">
+                  <KeyRound className="w-3.5 h-3.5 text-cyan-400" />
+                  FASTag NETC Registry JSON Payload (Editable):
+                </span>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(jsonCredentialInput);
+                  }}
+                  className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-cyan-300 transition"
+                  title="Copy JSON to clipboard"
+                >
+                  <Copy className="w-3 h-3" /> Copy JSON
+                </button>
+              </div>
+
+              <div className="relative">
+                <textarea
+                  value={jsonCredentialInput}
+                  onChange={(e) => {
+                    setJsonCredentialInput(e.target.value);
+                    setJsonVerifyResult(null);
+                  }}
+                  rows={9}
+                  spellCheck={false}
+                  className="w-full font-mono text-[11px] p-3 rounded-lg bg-slate-950 border border-slate-800 text-cyan-300 focus:outline-none focus:border-cyan-500 shadow-inner resize-y leading-relaxed selection:bg-cyan-950"
+                  placeholder="Paste or format your FASTag JSON payload here..."
+                />
+              </div>
+
+              <div className="flex items-center justify-between text-[10px] text-slate-500">
+                <span>Fields evaluated: <code className="text-slate-400 font-bold">fastag_id</code>, <code className="text-slate-400 font-bold">vehicle_registration</code>, <code className="text-slate-400 font-bold">wallet_balance_inr</code>, <code className="text-slate-400 font-bold">tag_status</code></span>
+                <span>Standard NETC Gen2 Schema</span>
+              </div>
+            </div>
+
+            {/* Verification Action & Status Output (5 cols) */}
+            <div className="lg:col-span-5 flex flex-col justify-between space-y-3 p-4 rounded-xl bg-slate-950/70 border border-slate-800">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-[11px] text-slate-300 font-bold pb-2 border-b border-slate-800">
+                  <span>Target Cross-Verification:</span>
+                  <span className="text-emerald-400 font-mono font-black text-xs">
+                    {extractedPlate || extractPlateNumberAlone(rawPlateInput) || 'KA05MK9821'}
+                  </span>
+                </div>
+
+                {/* Status Indicator Result */}
+                {jsonVerifyResult ? (
+                  <div
+                    className={`p-3 rounded-lg border text-xs space-y-1.5 animate-fadeIn ${
+                      jsonVerifyResult.status === 'VERIFIED'
+                        ? 'bg-emerald-950/70 border-emerald-700 text-emerald-300'
+                        : jsonVerifyResult.status === 'LOW_BALANCE'
+                        ? 'bg-amber-950/70 border-amber-700 text-amber-300'
+                        : 'bg-rose-950/70 border-rose-700 text-rose-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold text-xs">
+                      {jsonVerifyResult.status === 'VERIFIED' ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      ) : jsonVerifyResult.status === 'LOW_BALANCE' ? (
+                        <AlertTriangle className="w-4 h-4 text-amber-400" />
+                      ) : (
+                        <XCircle className="w-4 h-4 text-rose-400" />
+                      )}
+                      <span>
+                        {jsonVerifyResult.status === 'VERIFIED'
+                          ? 'VERIFIED (JSON CONFIRMED)'
+                          : jsonVerifyResult.status === 'LOW_BALANCE'
+                          ? 'LOW WALLET BALANCE'
+                          : jsonVerifyResult.status === 'MISMATCH'
+                          ? 'MISMATCH / FRAUD DETECTED'
+                          : 'CLEARANCE REJECTED'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] leading-relaxed opacity-95">
+                      {jsonVerifyResult.message}
+                    </p>
+                    <div className="text-[10px] pt-1 opacity-80 flex items-center justify-between border-t border-current/20">
+                      <span>Barrier Action:</span>
+                      <strong className="font-bold">
+                        {jsonVerifyResult.status === 'VERIFIED' ? '🟢 RAISE BOOM GATE (70°)' : '🔴 LOCK BOOM GATE (0°)'}
+                      </strong>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-lg bg-slate-900 border border-dashed border-slate-800 text-slate-400 text-center space-y-1">
+                    <CheckSquare className="w-5 h-5 mx-auto text-slate-500" />
+                    <div className="text-[11px] font-bold text-slate-300">Ready to Verify JSON Credential</div>
+                    <p className="text-[10px] text-slate-500">
+                      Click below to parse the JSON and cross-verify with optical license plate <strong className="text-cyan-400">{extractedPlate || extractPlateNumberAlone(rawPlateInput) || 'KA05MK9821'}</strong>.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Button */}
+              <button
+                onClick={handleVerifyWithJson}
+                disabled={isVerifyingJson}
+                className="w-full py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:bg-cyan-800 text-slate-950 font-bold font-mono text-xs flex items-center justify-center gap-2 shadow-lg shadow-cyan-950/50 transition"
+              >
+                {isVerifyingJson ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Cross-Verifying JSON with ANPR Camera...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Confirm & Verify with JSON FASTag Credential</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
