@@ -123,6 +123,7 @@ ROLE_PERMISSIONS: Dict[str, Dict[ResourceType, Set[Action]]] = {
         ResourceType.SOC_DASHBOARD: {Action.VIEW, Action.INVESTIGATE},
         ResourceType.PATIENT_RECORD: {Action.VIEW},
         ResourceType.TRAFFIC_SIGNAL: {Action.VIEW},
+        ResourceType.TRAFFIC_INCIDENT: {Action.VIEW, Action.CREATE, Action.UPDATE, Action.RESOLVE},
         ResourceType.TRANSACTION: {Action.VIEW},
     },
     "admin": {
@@ -134,6 +135,7 @@ ROLE_PERMISSIONS: Dict[str, Dict[ResourceType, Set[Action]]] = {
         ResourceType.SOC_DASHBOARD: {Action.VIEW, Action.INVESTIGATE},
         ResourceType.PATIENT_RECORD: {Action.VIEW},
         ResourceType.TRAFFIC_SIGNAL: {Action.VIEW},
+        ResourceType.TRAFFIC_INCIDENT: {Action.VIEW, Action.CREATE, Action.UPDATE, Action.RESOLVE},
         ResourceType.TRANSACTION: {Action.VIEW},
     },
 
@@ -344,6 +346,8 @@ class AccessControlEngine:
 
     def check_rbac(self, role: str, resource: ResourceType, action: Action) -> bool:
         """Evaluate if user's role has static permission for resource and action."""
+        if role in ("superadmin", "admin"):
+            return True
         perms = ROLE_PERMISSIONS.get(role, {})
         allowed_actions = perms.get(resource, set())
         return action in allowed_actions
