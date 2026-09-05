@@ -34,7 +34,7 @@ export const Sidebar: React.FC = () => {
     { id: 'workspace', name: 'Role Workflow HQ', path: '/workspace', icon: Briefcase },
     { id: 'overview', name: 'SOC Command Center', path: '/soc', icon: Shield, badge: openIncidents > 0 ? String(openIncidents) : undefined },
     { id: 'twin', name: 'Digital Twin', path: '/twin', icon: Network },
-    { id: 'healthcare', name: 'Healthcare Command', path: '/healthcare', icon: HeartPulse },
+    { id: 'healthcare', name: 'Hospital Cyber-Defense', path: '/healthcare', icon: HeartPulse },
     { id: 'doctor', name: 'Doctor Portal', path: '/doctor', icon: Stethoscope },
     { id: 'ambulance', name: 'Ambulance CAD', path: '/ambulance', icon: Ambulance },
     { id: 'traffic', name: 'Traffic Operations', path: '/traffic', icon: Car },

@@ -13,6 +13,9 @@ import {
   Server,
   Network,
   Users,
+  KeyRound,
+  Radio,
+  Eye,
 } from 'lucide-react';
 import { BreakGlassEvent } from '../../../types/healthcare';
 import { healthcareService } from '../../../services/healthcareService';
@@ -114,6 +117,100 @@ export const SecuritySubsystem: React.FC<SecuritySubsystemProps> = ({ userRole }
           >
             <RotateCcw className="w-4 h-4" />
           </button>
+        </div>
+      </div>
+
+      {/* Hospital Security Officer Overview Metrics */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-[11px] font-bold uppercase tracking-wider">Zero-Trust Perimeter</span>
+            <Lock className="w-4 h-4 text-emerald-400" />
+          </div>
+          <div className="text-xl font-bold text-slate-100 flex items-baseline gap-1.5">
+            <span>ARMED & ACTIVE</span>
+          </div>
+          <p className="text-[10px] text-emerald-400 font-semibold">BOLA + ABAC Gateways Enforced</p>
+        </div>
+
+        <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-[11px] font-bold uppercase tracking-wider">Break-Glass Interceptions</span>
+            <Zap className="w-4 h-4 text-amber-400" />
+          </div>
+          <div className="text-xl font-bold text-slate-100 flex items-baseline gap-1.5">
+            <span>{breakGlassLogs.length} Events</span>
+          </div>
+          <p className="text-[10px] text-amber-400 font-semibold">Mandatory Cryptographic Audit Active</p>
+        </div>
+
+        <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-[11px] font-bold uppercase tracking-wider">IoMT Ward VLAN Perimeter</span>
+            <Radio className="w-4 h-4 text-sky-400" />
+          </div>
+          <div className="text-xl font-bold text-slate-100 flex items-baseline gap-1.5">
+            <span>VLAN 99 ISOLATION</span>
+          </div>
+          <p className="text-[10px] text-sky-400 font-semibold">12 Bedside Medical Devices Filtered</p>
+        </div>
+
+        <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-[11px] font-bold uppercase tracking-wider">Hospital SOC Link</span>
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+          </div>
+          <div className="text-xl font-bold text-slate-100 flex items-baseline gap-1.5">
+            <span>SYNCHRONIZED</span>
+          </div>
+          <p className="text-[10px] text-emerald-400 font-semibold">Live Dispatch to Securox SOC</p>
+        </div>
+      </div>
+
+      {/* Hospital Security Personnel Control Panel */}
+      <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-xl space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2">
+            <KeyRound className="w-4 h-4 text-rose-400" />
+            <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+              Hospital Security Personnel Access & Badge Control Bay
+            </h4>
+          </div>
+          <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded border border-slate-700">
+            STATION: BLDG-A MAIN SECURITY DESK
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="p-3.5 rounded-lg bg-slate-950/70 border border-slate-800 space-y-1.5">
+            <div className="flex justify-between items-center">
+              <span className="font-bold text-slate-200 text-xs">Physical RFID Access Doors</span>
+              <span className="text-[9px] font-bold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800">
+                LOCKED / SECURE
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400">ICU, Pharmacy Pyxis vault, and LIS Server room biometric access controls operating normally.</p>
+          </div>
+
+          <div className="p-3.5 rounded-lg bg-slate-950/70 border border-slate-800 space-y-1.5">
+            <div className="flex justify-between items-center">
+              <span className="font-bold text-slate-200 text-xs">CCTV Surveillance & ANPR</span>
+              <span className="text-[9px] font-bold text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800">
+                14 / 14 CAMERAS ONLINE
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400">Ambulance bay gantry, ER entrance, and surgical wing corridors stream directly to central SOC.</p>
+          </div>
+
+          <div className="p-3.5 rounded-lg bg-slate-950/70 border border-slate-800 space-y-1.5">
+            <div className="flex justify-between items-center">
+              <span className="font-bold text-slate-200 text-xs">Clinician Break-Glass Authorization</span>
+              <span className="text-[9px] font-bold text-amber-400 bg-amber-950/80 px-2 py-0.5 rounded border border-amber-800">
+                AUTOMATED ESCALATION
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400">Any unauthorized EHR patient chart access elevates user risk score (+35.0) and alerts security personnel.</p>
+          </div>
         </div>
       </div>
 

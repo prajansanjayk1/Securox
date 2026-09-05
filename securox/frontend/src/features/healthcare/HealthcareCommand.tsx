@@ -44,8 +44,8 @@ export const HealthcareCommand: React.FC = () => {
   const { role, user, switchRole } = useAuth();
   const userRole = (role || 'admin').toLowerCase();
 
-  // Active navigation tab
-  const [activeTab, setActiveTab] = useState<string>('overview');
+  // Active navigation tab (Defaults to security for Hospital Cyber-Defense personnel)
+  const [activeTab, setActiveTab] = useState<string>('security');
 
   // Shared state
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -176,20 +176,20 @@ export const HealthcareCommand: React.FC = () => {
   };
 
   const tabs = [
-    { id: 'overview', label: 'Overview', icon: HeartPulse, count: null },
-    { id: 'patients', label: 'Registration', icon: Users, count: patients.length },
-    { id: 'appointments', label: 'Appointments', icon: Calendar, count: null },
-    { id: 'admissions', label: 'Admissions & Beds', icon: Bed, count: null },
-    { id: 'doctor', label: 'Doctor EHR', icon: Stethoscope, count: null, highlight: userRole === 'doctor' },
-    { id: 'nurse', label: 'Nurse Station', icon: UserCheck, count: null, highlight: userRole === 'nurse' },
-    { id: 'lab', label: 'LIS Laboratory', icon: TestTube, count: null, highlight: userRole === 'lab_technician' },
-    { id: 'pharmacy', label: 'Pharmacy & Pyxis', icon: Pill, count: null, highlight: userRole === 'pharmacist' },
-    { id: 'billing', label: 'Billing & TPA', icon: CreditCard, count: null, highlight: userRole.includes('billing') },
-    { id: 'emergency', label: 'ED CAD Triage', icon: PhoneCall, count: null },
-    { id: 'ambulance', label: 'Ambulance CAD', icon: Ambulance, count: null, highlight: userRole === 'ambulance_driver' },
-    { id: 'paramedic', label: 'Paramedic Uplink', icon: Radio, count: null, highlight: userRole === 'paramedic' },
-    { id: 'iomt', label: 'IoMT Security', icon: Activity, count: devices.filter(d => d.status === 'ANOMALOUS' || d.risk_score > 60).length || null },
-    { id: 'security', label: 'Hospital IT Sec', icon: ShieldCheck, count: null, highlight: userRole === 'hospital_security' },
+    { id: 'security', label: 'Hospital Cyber Security', icon: ShieldAlert, count: null, highlight: true },
+    { id: 'iomt', label: 'Bedside IoMT Security', icon: Radio, count: devices.filter(d => d.status === 'ANOMALOUS' || d.risk_score > 60).length || null, highlight: true },
+    { id: 'overview', label: 'Security & Clinical Overview', icon: Activity, count: null },
+    { id: 'doctor', label: 'Doctor EHR (RBAC Scoped)', icon: Stethoscope, count: null, highlight: userRole === 'doctor' },
+    { id: 'patients', label: 'Patient Identity & Auth', icon: Users, count: patients.length },
+    { id: 'admissions', label: 'Bed Access Control', icon: Bed, count: null },
+    { id: 'nurse', label: 'Nurse Station Security', icon: UserCheck, count: null, highlight: userRole === 'nurse' },
+    { id: 'emergency', label: 'ED CAD Triage Gateway', icon: PhoneCall, count: null },
+    { id: 'ambulance', label: 'Ambulance CAD Telemetry', icon: Ambulance, count: null, highlight: userRole === 'ambulance_driver' },
+    { id: 'paramedic', label: 'Paramedic Uplink Comms', icon: Lock, count: null, highlight: userRole === 'paramedic' },
+    { id: 'lab', label: 'LIS Laboratory Integrity', icon: TestTube, count: null, highlight: userRole === 'lab_technician' },
+    { id: 'pharmacy', label: 'Pharmacy & Pyxis Dispenser', icon: Pill, count: null, highlight: userRole === 'pharmacist' },
+    { id: 'billing', label: 'Billing & Anti-Fraud Ledger', icon: CreditCard, count: null, highlight: userRole.includes('billing') },
+    { id: 'appointments', label: 'Clinical Token Appointments', icon: Calendar, count: null },
   ];
 
   return (
@@ -198,22 +198,22 @@ export const HealthcareCommand: React.FC = () => {
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-rose-600 to-red-500 flex items-center justify-center text-white shadow-lg shadow-rose-600/30">
-            <HeartPulse className="w-6 h-6" />
+            <ShieldAlert className="w-6 h-6" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-mono font-bold text-rose-400 uppercase tracking-wide">
-                CAREGUARD HEALTHCARE COMMAND SUITE
+                CAREGUARD HOSPITAL CYBER-DEFENSE & SECURITY OPERATIONS
               </span>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
-                Persona: <strong className="text-rose-300 uppercase">{userRole}</strong>
+                Security Officer / Operator: <strong className="text-rose-300 uppercase">{userRole}</strong>
               </span>
             </div>
             <h1 className="text-xl font-bold font-mono text-slate-100">
-              City General Hospital (H001) Operational Console
+              Hospital Security Command & IoMT Defense Console (H001)
             </h1>
             <p className="text-xs font-mono text-slate-400">
-              14 Integrated Clinical & IoMT Cyber Subsystems with Strict Role Scoping & Break-Glass Protocol
+              Hospital physical & cyber-security posture: IoMT device telemetry, break-glass intrusion audits, blast-radius containment & zero-trust perimeter control
             </p>
           </div>
         </div>
