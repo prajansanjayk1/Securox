@@ -25,6 +25,7 @@ import {
   Copy,
   KeyRound,
   CheckSquare,
+  History,
 } from 'lucide-react';
 
 interface Props {
@@ -202,6 +203,19 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
   const [jsonCredentialInput, setJsonCredentialInput] = useState(jsonCredentialPresets[0].json);
   const [selectedJsonPreset, setSelectedJsonPreset] = useState(jsonCredentialPresets[0].id);
   const [isVerifyingJson, setIsVerifyingJson] = useState(false);
+
+  // Track vehicle plates that have already cleared the toll plaza
+  // If the same vehicle is scanned again, flag duplicate scan anomaly
+  const [scannedVehiclesHistory, setScannedVehiclesHistory] = useState<
+    Array<{ plate: string; timestamp: string; tag_id: string }>
+  >([
+    {
+      plate: 'KA05MK9821',
+      timestamp: '09:12:00',
+      tag_id: 'TAG-IND-8821901',
+    },
+  ]);
+
   const [jsonVerifyResult, setJsonVerifyResult] = useState<{
     status: 'VERIFIED' | 'MISMATCH' | 'REJECTED' | 'LOW_BALANCE' | 'ANOMALY_DETECTED';
     message: string;
@@ -348,7 +362,30 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
         return;
       }
 
-      // Check 3: Cross-verification against optical ANPR plate
+      // Check 3: Duplicate Scan / Re-scan Anomaly Check
+      // If the same vehicle has already been scanned/cleared, flag it as an ANOMALY DETECTED
+      const existingScan = scannedVehiclesHistory.find(
+        (s) => s.plate.toUpperCase() === opticalPlate.toUpperCase()
+      );
+      if (existingScan) {
+        setBarrierState('CLOSED');
+        setJsonVerifyResult({
+          status: 'ANOMALY_DETECTED',
+          message: `ANOMALY DETECTED (DUPLICATE SCAN): Vehicle [${opticalPlate}] was already scanned at ${existingScan.timestamp}. Toll clearance denied. Potential tailgating or tag clone re-use!`,
+          details: {
+            ...parsedCredential,
+            scanned_timestamp: existingScan.timestamp,
+            duplicate_flag: true,
+          },
+        });
+        setApprovalBanner({
+          type: 'REJECTED',
+          message: `ANOMALY DETECTED: Vehicle [${opticalPlate}] already processed at ${existingScan.timestamp}. Barrier locked.`,
+        });
+        return;
+      }
+
+      // Check 4: Cross-verification against optical ANPR plate
       const isPlateMatch = Boolean(jsonPlate && opticalPlate && jsonPlate === opticalPlate);
 
       // Send to backend vehicle verification engine
@@ -374,6 +411,16 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
           type: 'APPROVED',
           message: `CLEARANCE APPROVED: Vehicle [${opticalPlate}] verified against JSON FASTag [${tagId}]. Boom barrier raised (70°).`,
         });
+
+        // Add to scanned history to protect against repeated scans
+        setScannedVehiclesHistory((prev) => [
+          {
+            plate: opticalPlate,
+            timestamp: new Date().toLocaleTimeString(),
+            tag_id: tagId,
+          },
+          ...prev.filter((p) => p.plate.toUpperCase() !== opticalPlate.toUpperCase()),
+        ]);
 
         // Record toll transaction
         try {
@@ -408,6 +455,23 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
     } catch (err: any) {
       console.error('JSON verification error:', err);
       // Fallback local verification if backend unreachable
+      const existingScan = scannedVehiclesHistory.find(
+        (s) => s.plate.toUpperCase() === opticalPlate.toUpperCase()
+      );
+      if (existingScan) {
+        setBarrierState('CLOSED');
+        setJsonVerifyResult({
+          status: 'ANOMALY_DETECTED',
+          message: `ANOMALY DETECTED (DUPLICATE SCAN): Vehicle [${opticalPlate}] was already scanned at ${existingScan.timestamp}. Barrier locked.`,
+          details: parsedCredential,
+        });
+        setApprovalBanner({
+          type: 'REJECTED',
+          message: `ANOMALY DETECTED: Vehicle [${opticalPlate}] already scanned. Barrier locked.`,
+        });
+        return;
+      }
+
       const isPlateMatch = Boolean(jsonPlate && opticalPlate && jsonPlate === opticalPlate);
       if (isPlateMatch && tagStatus === 'ACTIVE') {
         setBarrierState('OPEN');
@@ -420,6 +484,16 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
           type: 'APPROVED',
           message: `CLEARANCE APPROVED: Vehicle [${opticalPlate}] verified via JSON credential.`,
         });
+
+        // Add to scanned history
+        setScannedVehiclesHistory((prev) => [
+          {
+            plate: opticalPlate,
+            timestamp: new Date().toLocaleTimeString(),
+            tag_id: tagId,
+          },
+          ...prev.filter((p) => p.plate.toUpperCase() !== opticalPlate.toUpperCase()),
+        ]);
       } else {
         setBarrierState('CLOSED');
         setJsonVerifyResult({
@@ -1055,6 +1129,8 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
                           ? 'VERIFIED (JSON CONFIRMED)'
                           : jsonVerifyResult.status === 'LOW_BALANCE'
                           ? 'LOW WALLET BALANCE'
+                          : jsonVerifyResult.details?.duplicate_flag
+                          ? 'ANOMALY DETECTED (DUPLICATE SCAN)'
                           : jsonVerifyResult.status === 'ANOMALY_DETECTED' || jsonVerifyResult.status === 'MISMATCH'
                           ? 'ANOMALY DETECTED (PLATE MISMATCH)'
                           : 'CLEARANCE REJECTED'}
@@ -1099,6 +1175,34 @@ export const TollFastagSubsystem: React.FC<Props> = ({ scans, onRefresh }) => {
                   </>
                 )}
               </button>
+
+              {/* Scanned Vehicles Log & Duplicate Prevention Status */}
+              <div className="pt-2 border-t border-slate-850 flex items-center justify-between text-[10px] text-slate-400">
+                <div className="flex items-center gap-1.5">
+                  <History className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>
+                    Cleared Vehicles Log:{' '}
+                    <strong className="text-slate-200">
+                      {scannedVehiclesHistory.length > 0
+                        ? scannedVehiclesHistory.map((s) => s.plate).join(', ')
+                        : 'None'}
+                    </strong>
+                  </span>
+                </div>
+                {scannedVehiclesHistory.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setScannedVehiclesHistory([]);
+                      setApprovalBanner(null);
+                      setJsonVerifyResult(null);
+                    }}
+                    className="text-amber-400/80 hover:text-amber-300 underline font-mono text-[9px] transition"
+                    title="Clear history to re-test clearance without duplicate scan anomaly"
+                  >
+                    Clear History
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
