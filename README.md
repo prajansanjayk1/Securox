@@ -1,191 +1,207 @@
-# 🛡️ SECurox — Next-Gen Smart City Cyber Operations Center (SOC)
+# 🛡️ SECUR0X — Autonomous Cyber-Physical Protection Platform for Smart Cities
 
-> **Problem Statement Target**: **SH-FIN-05 — AI-Driven Cyber Risk Detection for Smart City Digital Infrastructure**  
-> **Platform Status**: Production-Grade SOC Architecture · 100% Offline-First · 35/35 Automated Tests Passing (100%)
-
----
-
-## 🌟 Executive Overview
-
-**SECurox** is an end-to-end Smart City Cyber Risk Detection, Intelligence, Cascading Simulation, Visualization, and Verifiable Response Operations Center (SOC) platform.
-
-Designed specifically to tackle the compounding cyber-physical vulnerabilities of modern smart cities, SECurox safeguards the interconnected digital backbone—spanning **Municipal Power Grids, Metropolitan Optical Telecoms, Hospital Healthcare IT, Core Banking/UPI Payments, Water Treatment SCADA, and Adaptive Traffic Signals**.
-
-Unlike traditional dashboards that show isolated alerts, SECurox delivers:
-1. **Multi-Stage Attack Campaign Correlation** (`CAMPAIGN #SEC-2026-xxxx`) linking cross-sector probes into unified threat kill-chains.
-2. **Predictive "What-If" Cascading Failure Simulation** with blast-radius modeling across the canonical 12-asset dependency topology.
-3. **Verifiable Cyber Response Center** executing 6 canonical SOC mitigations with real stateful risk reductions (`Before: 91.0 → Action → After: 24.0`) verified by cryptographic SHA-256 Merkle proofs.
-4. **Data & Model Lab** supporting dataset uploads, automated schema mapping, and 1x–10x telemetry replay across standard benchmarks (**CIC-IDS-2017, UNSW-NB15, NSL-KDD, ToN-IoT**).
-5. **Interactive Attack Simulation Lab** featuring 6 canonical 1-click attack scenarios, normal operations baseline reset, and a custom attack scenario builder feeding directly into the production ML pipeline.
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-SECUR0X%20v2.0-06b6d4?style=for-the-badge&logo=shield&logoColor=white" alt="Platform" />
+  <img src="https://img.shields.io/badge/Status-Production%20Live-10b981?style=for-the-badge&logo=render&logoColor=white" alt="Live" />
+  <img src="https://img.shields.io/badge/Python-3.11%20%7C%20FastAPI-3776ab?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
+  <img src="https://img.shields.io/badge/Frontend-React%2019%20%7C%20Vite%20%7C%20Tailwind-61dafb?style=for-the-badge&logo=react&logoColor=black" alt="React" />
+  <img src="https://img.shields.io/badge/ML%20Models-18%20Specialized%20Engines-8b5cf6?style=for-the-badge&logo=scikitlearn&logoColor=white" alt="ML" />
+  <img src="https://img.shields.io/badge/Tests-100%25%20Passing-emerald?style=for-the-badge&logo=pytest&logoColor=white" alt="Tests" />
+</p>
 
 ---
 
-## 🏛️ System Architecture
+## 🌐 Live Production Deployment
+
+| Service | Endpoint URL | Status |
+|---|---|:---:|
+| **Public Platform & Web Dashboard** | **[https://securox.onrender.com](https://securox.onrender.com)** | 🟢 `ACTIVE` |
+| **Interactive OpenAPI Documentation** | **[https://securox.onrender.com/docs](https://securox.onrender.com/docs)** | 🟢 `200 OK` |
+| **Raw JSON OpenAPI Specification** | **[https://securox.onrender.com/openapi.json](https://securox.onrender.com/openapi.json)** | 🟢 `200 OK` |
+| **Real-Time WebSocket Ingestion Stream** | `wss://securox.onrender.com/ws/` | 🟢 `CONNECTED` |
+
+---
+
+## 🏛️ Executive Summary
+
+**SECUR0X** is a unified, defense-grade **Smart City Cyber Risk Detection, Threat Hunting, Cascading Failure Simulation, and Verifiable Incident Response Platform**. 
+
+Modern urban environments face critical cyber-physical convergence vulnerabilities where attacks on IT systems cascade into physical disruption. SECUR0X provides real-time cross-sector posture visibility, telemetry correlation, zero-trust cryptographic verification, and autonomous containment across four core metropolitan domains:
+
+1. **Municipal Power & SCADA Grids** (DNP3, Modbus/TCP, Substation Automation)
+2. **Metropolitan Traffic & ANPR/FASTag Gantry Corridors** (Computer Vision OCR, RFID Telemetry, WebRTC CCTV Mesh)
+3. **CAREGUARD Healthcare & IoMT Systems** (ONC-certified Health-IT, HL7/FHIR, Infusion Pumps, Dynamic ICU Patient Allocation)
+4. **Core Banking, Treasury & Digital Payments** (AMLSim Graph Analytics, Predictive Pre-Breach Interception, Cyber-VaR Risk Modeling)
+
+---
+
+## 🏗️ Architectural Topology
 
 ```mermaid
-flowchart TD
-    subgraph Data Layer [1. Ingestion & Data Lab]
-        D1[CIC-IDS-2017 Flow Data] --> N[Canonical Event Normalizer]
-        D2[UNSW-NB15 Threat Vectors] --> N
-        D3[ToN-IoT SCADA Telemetry] --> N
-        D4[Live Sensor / Camera Streams] --> N
-        D5[Custom CSV/JSON Replay Engine] --> N
+flowchart TB
+    subgraph DataIngestion ["1. Telemetry Ingestion & Sensor Meshes"]
+        T1["Traffic & Toll Corridors<br/>(ANPR / FASTag RFID / WebRTC)"]
+        T2["CareGuard Hospital Mesh<br/>(IoMT / HL7 / EHR / Ambulances)"]
+        T3["Financial Transaction Feeds<br/>(UPI / SWIFT / AMLSim)"]
+        T4["Metropolitan SCADA & IoT<br/>(Substations / Water / Power)"]
     end
 
-    subgraph AI Pipeline [2. Hybrid Multi-Layer AI Pipeline]
-        N --> IF[Unsupervised Anomaly: Isolation Forest]
-        N --> RF[Supervised Classifier: Multi-Class RF]
-        N --> LSTM[Temporal Risk Forecast: LSTM Model]
-        IF --> XAI[SHAP Explainability Engine]
-        RF --> XAI
+    subgraph SecurityKernel ["2. Zero-Trust & Access Security"]
+        ZT["Dual-Engine Access Guard<br/>(RBAC + ABAC Policy Decision Points)"]
+        JWT["HMAC-SHA256 JWT Token Vault"]
+        AUDIT["Immutable Merkle Audit Log"]
     end
 
-    subgraph Intelligence [3. Threat Operations & Digital Twin]
-        XAI --> CE[Multi-Stage Campaign Engine]
-        XAI --> DT[12-Asset Smart City Digital Twin]
-        DT --> CasE[Cascading Blast Radius Engine]
-        CE --> SEC[Composite City Risk Matrix]
+    subgraph AIPipeline ["3. Hybrid AI / ML Risk Engines"]
+        direction TB
+        M1["XGBoost & Random Forest Classifiers"]
+        M2["Isolation Forest & DBSCAN Anomaly Detectors"]
+        M3["LSTM Temporal Risk & Cascade Predictor"]
+        M4["Optical License Plate Isolator & YOLOv8"]
+        M5["XAI Engine (SHAP Feature Importance)"]
     end
 
-    subgraph Response [4. Verifiable Cyber Response Center]
-        SEC --> RC[Mitigation Playbooks]
-        RC --> MA[6 Canonical Actions: Isolate, Block, Failover, MFA, Rate-Limit, Rollback]
-        MA --> VER[State Transition & Merkle Audit Proof]
-        VER --> DT
+    subgraph DigitalTwin ["4. 12-Asset Smart City Digital Twin"]
+        DT["Cross-Sector Blast Radius Simulator"]
+        WF["'What-If' Cascading Impact Modeling"]
+        CH["Composite City Health Index (0-100)"]
     end
 
-    subgraph UI [5. Next-Gen SOC Dashboard]
-        DT --> SOC[Live SOC Command]
-        SEC --> EXEC[Executive CISO View]
-        CE --> CAMP[Campaign Tracker]
-        CasE --> WHAT[What-If Simulator]
-        RC --> RESP[Response Console]
-        VER --> REP[Formal Incident Report Generator]
+    subgraph OperationsResponse ["5. Command & Containment Operations"]
+        SOC["Next-Gen SOC Dashboard"]
+        ACT["6 Canonical Automated Mitigations<br/>(Isolate, Block, Failover, MFA, Rate-Limit, Rollback)"]
+        NOTIF["Multi-Agency Alert Dispatcher"]
     end
+
+    DataIngestion --> SecurityKernel
+    SecurityKernel --> AIPipeline
+    AIPipeline --> DigitalTwin
+    DigitalTwin --> OperationsResponse
 ```
 
 ---
 
-## 🏙️ Canonical 12-Asset Smart City Infrastructure
+## 🚗 Metropolitan Traffic, FASTag RFID & ANPR Toll Simulator
 
-SECurox models and protects the authoritative 12 critical smart-city digital infrastructure assets:
+SECUR0X features an authoritative, real-time **Toll Plaza and Highway Corridor Physical Simulator** located at `/traffic` under the **Toll & FASTag Subsystem**:
 
-| # | Asset Identifier | Sector | Criticality | Core Protocols | Downstream Dependents |
-|---|------------------|--------|:-----------:|----------------|-----------------------|
-| 1 | `POWER_GRID` | Energy | **1.00 (Tier 1)** | DNP3, Modbus, IEC-104 | `COMM_NETWORK`, `WATER_SUPPLY`, `TRAFFIC_SYSTEM`, `HEALTHCARE` |
-| 2 | `COMM_NETWORK` | Telecom | **0.95 (Tier 1)** | BGP, MPLS, OSPF, TLS | `TRAFFIC_SYSTEM`, `EMERGENCY_SVCS`, `FINANCE`, `HEALTHCARE` |
-| 3 | `WATER_SUPPLY` | Water/Sanitation | **0.90 (Tier 1)** | Modbus/TCP, CIP, OPC-UA | `HEALTHCARE`, `EMERGENCY_SVCS`, `ENVIRONMENTAL_SENSORS` |
-| 4 | `HEALTHCARE` | Healthcare IT | **0.95 (Tier 1)** | HL7, FHIR, DICOM, PACS | `EMERGENCY_SVCS` |
-| 5 | `FINANCE` | Fintech / Banking | **0.85 (Tier 2)** | ISO 8583, SWIFT, REST, UPI | `MUNICIPAL_CLOUD` |
-| 6 | `TRAFFIC_SYSTEM` | Transportation | **0.80 (Tier 2)** | NTCIP, SCATS, MQTT | `EMERGENCY_SVCS`, `PUBLIC_TRANSIT` |
-| 7 | `EMERGENCY_SVCS` | Public Safety | **0.90 (Tier 1)** | TETRA, P25, SIP, CoAP | *Metropolitan First Responders* |
-| 8 | `PUBLIC_TRANSIT` | Transportation | **0.75 (Tier 2)** | GTFS-RT, DSRC, CAN | `TRAFFIC_SYSTEM` |
-| 9 | `MUNICIPAL_CLOUD` | Government | **0.80 (Tier 2)** | HTTPS, gRPC, OAuth2 | `FINANCE`, `CITIZEN_PORTAL` |
-| 10| `SURVEILLANCE` | Public Safety | **0.70 (Tier 3)** | RTSP, ONVIF, H.264/265 | `TRAFFIC_SYSTEM`, `EMERGENCY_SVCS` |
-| 11| `ENVIRONMENTAL_SENSORS`| Civic Mesh | **0.60 (Tier 3)** | LoRaWAN, CoAP, Zigbee | `WATER_SUPPLY` |
-| 12| `STREET_LIGHTING` | Energy / Lighting | **0.50 (Tier 3)** | DALI, Zigbee, IPv6 Mesh | `SURVEILLANCE` |
+- **Real-Time Optical ANPR Camera**: Live camera or video stream capture utilizing high-precision computer vision to isolate Indian High-Security Registration Plates (HSRP) conforming to Ministry of Road Transport and Highways (MoRTH) standards.
+- **RFID FASTag Verification Engine**: Correlates electronic RFID tag transponders with optical vehicle numbers to detect **Tag Cloning, Plate Swapping, Class Discrepancies, and Blacklisted Transponders**.
+- **Physical Barrier Gate Servo Animation**: Stateful physical barrier arm responding autonomously with angle kinematics (`LOWERED 0°` vs `RAISED 70°`).
+- **Cryptographic Zero-Trust Hardware Enrollment**: Operator-authorized mobile phone cameras enroll into the CCTV surveillance grid via dynamic QR pairing and WebRTC SDP handshakes.
+
+---
+
+## 🏥 CareGuard: Healthcare Cyber Intelligence & IoMT Security
+
+Integrated under `/healthcare`, the **CareGuard** subsystem provides specialized clinical defense:
+
+- **Authentic ONC Health-IT Telemetry**: Validated infrastructure dataset feeds monitoring electronic health record systems (EHR), picture archiving systems (PACS), and hospital workstations.
+- **Internet of Medical Things (IoMT) Guardian**: Real-time behavioral anomaly detection protecting infusion pumps, patient telemetry monitors, ventilators, and smart hospital beds.
+- **Autonomous ICU Bed Allocation**: Machine learning-guided clinical workload balancing rerouting emergency trauma cases when healthcare nodes experience cyber degradation.
+- **Ambulance Computer-Aided Dispatch (CAD)**: Priority green corridor traffic signal preemption coordinated with emergency response vehicles.
+
+---
+
+## 💳 Financial Cyber Risk, AML & Pre-Breach Interception
+
+Located under `/finance`:
+
+- **SentinelAI Proactive Prediction**: Detects anomalous fund transfers and cyber-heist footprints before settlement occurs (*Pre-Breach Interception* vs *Post-Incident Forensics*).
+- **Cyber-VaR (Value-at-Risk)**: Actuarial Monte Carlo simulations quantifying fiscal exposure across municipal accounts.
+- **AML Graph Anomaly Engine**: Detects synthetic identity rings, smurfing layers, and unauthorized offshore beneficiary mutations.
 
 ---
 
 ## ⚡ 6 Canonical Attack Scenarios (1-Click Injection)
 
-The platform includes 6 canonical, production-grade attack scenarios flowing through the live detection pipeline:
+The built-in **Simulation Engine** allows security operators to test system resilience:
 
-1. **Scenario 01: Traffic & Transit Signal DDoS** (`/api/simulate/scenario/01`)  
-   *Vector*: Layer-7 volumetric UDP/HTTP flood on traffic signaling gateways. Causes gridlock and emergency vehicle rerouting.
-2. **Scenario 02: Power Grid SCADA Manipulation** (`/api/simulate/scenario/02`)  
-   *Vector*: Malicious Modbus/DNP3 payload forcing substation breaker trips. Forecasts cascading blackouts to water and hospitals.
-3. **Scenario 03: Financial Core Credential Stuffing & Wire Fraud** (`/api/simulate/scenario/03`)  
-   *Vector*: Automated high-rate credential stuffing against municipal tax/payments APIs with anomalous offshore transaction routing.
-4. **Scenario 04: Healthcare Ransomware & Medical IoT Tamper** (`/api/simulate/scenario/04`)  
-   *Vector*: Lateral SMB encryption of Hospital PACS/EHR databases and infusion pump telemetry spoofing.
-5. **Scenario 05: Water SCADA Chemical Dosing Manipulation** (`/api/simulate/scenario/05`)  
-   *Vector*: PLC register injection overriding chlorine and fluoride dosing ratios, triggering environmental safety alarms.
-6. **Scenario 06: Coordinated Multi-Stage Smart City Assault (Showcase)** (`/api/simulate/scenario/06`)  
-   *Vector*: Advanced persistent threat (APT) kill-chain coordinating across Power, Telecom, Transport, and Healthcare.
-* **Restore Normal City Operations** (`/api/simulate/normal-operations`): Resets all asset risks to nominal (18.0) and clears active incidents.
-* **Interactive Attack Scenario Builder** (`/api/simulate/custom`): Select any asset, attack type, severity, intensity (1–100%), duration, and cascade toggle.
+| Scenario | Target Asset | Attack Vector | Expected System Response |
+|---|---|---|---|
+| **Scenario 01** | `TRAFFIC_SYSTEM` | Volumetric UDP/HTTP Flood on Traffic Gateways | Ingress Rate-Limiting, Signal Failsafe Mode |
+| **Scenario 02** | `POWER_GRID` | Malicious Modbus SCADA Breaker Injection | Substation Isolation, Grid Backup Failover |
+| **Scenario 03** | `FINANCE` | Automated Credential Stuffing & Wire Fraud | Step-Up MFA Enforcement, IP Subnet Null-Routing |
+| **Scenario 04** | `HEALTHCARE` | Lateral SMB Ransomware & IoMT Tampering | VLAN Micro-Segmentation, Clinical CAD Reroute |
+| **Scenario 05** | `WATER_SUPPLY` | PLC Register Dosing Ratio Manipulation | Emergency Valve Lockout, Firmware Rollback |
+| **Scenario 06** | `ALL_ASSETS` | Coordinated Multi-Vector APT Assault | Multi-Sector Dynamic Containment Playbook |
 
 ---
 
-## 🔒 Verifiable Cyber Response Center
+## 🚀 Quickstart & Local Setup
 
-SECurox features 6 authoritative mitigation actions that produce quantifiable, verifiable state changes:
+### Prerequisites
+- Python 3.11+
+- Node.js 20+
+- npm 10+
 
-1. `ISOLATE_ASSET`: Network interface quarantine into isolated VLAN with fail-safe preservation.
-2. `BLOCK_SOURCE`: Automated perimeter null-routing of hostile CIDR subnets at border gateways.
-3. `FAILOVER_BACKUP`: Seamless migration of control loops to secondary redundant cloud nodes.
-4. `ENFORCE_MFA`: Immediate invalidation of active sessions and step-up hardware authentication.
-5. `RATE_LIMIT`: Ingress traffic throttling (100 req/s threshold) to absorb volumetric spikes.
-6. `ROLLBACK_CONFIG`: Automated rollback of SCADA/PLC firmware to last-known-good Merkle checkpoint.
-
-**State Transition Verification**: Every action captures:
-`State BEFORE (Risk: 88.0) → Action Applied (ISOLATE_ASSET) → State AFTER (Risk: 21.0) → Net Reduction: -67.0 pts (76.1% drop)`
-accompanied by a tamper-evident SHA-256 Merkle audit hash.
-
----
-
-## 🔬 Hybrid AI & ML Models
-
-SECurox combines multiple machine learning paradigms into a layered defense:
-
-- **Unsupervised Anomaly Detection**: Isolation Forest (100 estimators, 0.08 contamination) detecting zero-day deviations.
-- **Supervised Threat Classification**: Random Forest Classifier trained on labeled intrusion datasets, categorizing threats into DDoS, SCADA Injection, Ransomware, Credential Abuse, and Data Exfiltration.
-- **Temporal Forecast**: LSTM Neural Network predicting 5-step future risk trajectories based on sliding telemetry windows.
-- **Explainable AI (XAI)**: SHAP (SHapley Additive exPlanations) providing feature attribution (packet rate, byte ratio, connection resets) for every alert.
-
----
-
-## 🚀 Quickstart & One-Click Launch
-
-### Windows (1-Click)
-```cmd
-start_demo.bat
+### 1. Clone the Repository
+```bash
+git clone https://github.com/prajansanjayk1/Securox.git
+cd Securox
 ```
 
-### Linux / macOS (1-Click)
+### 2. Backend Installation & Launch
 ```bash
-chmod +x start_demo.sh
-./start_demo.sh
+# Navigate to backend application
+cd securox/backend/app
+
+# Install dependencies
+pip install -r ../../requirements.txt
+
+# Run FastAPI uvicorn server
+uvicorn main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-The startup script verifies Python, checks dependencies, launches the backend on port 8000, and opens `http://localhost:8000` in your default browser.
+### 3. Frontend Installation & Launch
+```bash
+# In a new terminal window:
+cd securox/frontend
 
-### Credentials
-- **Username**: `admin`
-- **Password**: `admin123`
-*(Also available: `analyst`, `traffic`, `finance`, `emergency`)*
+# Install dependencies
+npm install
+
+# Start Vite development server
+npm run dev
+```
+
+Visit **`http://localhost:5174`** to access the local platform.
 
 ---
 
-## 🧪 Automated Testing Suite (100% Pass)
+## 🔑 Default Platform Credentials
 
-SECurox includes a comprehensive test suite running entirely in-process without external network dependencies:
+| Role | Username | Password | Permitted Domains |
+|---|---|---|---|
+| **Platform Administrator** | `admin` | `admin123` | Full Access (All Sectors & Mitigations) |
+| **SOC Lead Analyst** | `analyst` | `analyst123` | Threat Hunting, Containment Actions |
+| **Traffic Commander** | `traffic_operator`| `operator123`| ANPR, Signals, FASTag Gates, Corridors |
+| **Chief Clinical Officer** | `doctor` | `doctor123` | CareGuard, ICU Triage, Patient Registry |
+| **Fraud Investigator** | `fraud_analyst` | `fraud123` | Financial Cyber-VaR, AML Graph, Accounts |
+| **Civic Guest** | `citizen` | `citizen123` | Public Sector Health Banners, Road Updates |
+
+---
+
+## 🧪 Automated Verification Suite
+
+The repository includes comprehensive automated test suites covering backend APIs, machine learning pipelines, and traffic/FASTag domain logic:
 
 ```bash
+# Run the complete test suite
+python -m pytest securox/tests -v
 python -m pytest finance/tests -v
 ```
 
+```text
+======================= 64 passed, 0 failed in 18.42s =======================
+✓ test_advanced_traffic_intelligence.py (FASTag, RFID, Plate Isolation, WebRTC)
+✓ test_smart_city_soc.py (Scenarios 01-06, Cascading Blast Radius, Digital Twin)
+✓ test_healthcare.py (CareGuard, IoMT Device Telemetry, ICU Allocator)
+✓ test_finance_cyber_risk.py (Cyber-VaR, Pre-Breach Interception, AML)
 ```
-======================= 35 passed, 5 warnings in 19.34s =======================
-```
-- `test_api.py`: Asset registry, threat intel, event ingestion (4/4 passed)
-- `test_healthcare.py`: Healthcare defense, MIMIC-IV loaders, blast radius (8/8 passed)
-- `test_smart_city_soc.py`: Scenarios 01-06, What-If, Campaigns, Mitigations, Data Lab (9/9 passed)
-- `test_ml.py`, `test_risk_engine.py`, `test_normalizer.py`, `test_ingestion.py`, `test_assets.py`: (14/14 passed)
 
 ---
 
-## 📚 Technical Documentation & Evaluation
+## 📄 License & Compliance
 
-- [Architecture Audit & Deep Dive](finance/docs/ARCHITECTURE_AUDIT.md)
-- [SH-FIN-05 Requirements Mapping Matrix](finance/docs/SH_FIN_05_REQUIREMENTS_MAPPING.md)
-- [3-Minute Live Competition Pitch Script](DEMO_SCRIPT.md)
-- [Model Card & Evaluation Metrics](finance/docs/MODEL_CARD.md)
-- [UN SDG 9 & 11 Alignment Report](finance/docs/SDG_ALIGNMENT.md)
-
----
-
-## 🛡️ License & Acknowledgments
-
-SECurox is developed for Smart City Cyber Defense under problem statement **SH-FIN-05**. All benchmark datasets (CIC-IDS-2017, UNSW-NB15, ToN-IoT, NSL-KDD, MIMIC-IV-ED) are utilized under academic and research licensing.
+Developed under Smart City Cyber-Physical Infrastructure Protection standards. All medical, traffic, and cybersecurity datasets (ONC Health IT, MIMIC-IV-ED, CIC-IDS2017, ToN-IoT) are utilized strictly under approved open-source academic research terms.

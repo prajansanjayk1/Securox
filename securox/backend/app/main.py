@@ -778,11 +778,10 @@ try:
 except Exception as e:
     logger.error(f"Error including healthcare router: {e}")
 
-# Serve frontend
-import os, pathlib
-FRONTEND_DIR = pathlib.Path(__file__).resolve().parent.parent.parent / "frontend"
-if FRONTEND_DIR.exists():
-    static_dir = FRONTEND_DIR / "static"
+# Legacy static fallback
+legacy_frontend_dir = pathlib.Path(__file__).resolve().parent.parent.parent / "frontend"
+if legacy_frontend_dir.exists():
+    static_dir = legacy_frontend_dir / "static"
     static_dir.mkdir(parents=True, exist_ok=True)
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
@@ -7598,8 +7597,11 @@ async def get_demo_center_scenarios():
 
 
 FRONTEND_DIR = PROJECT_ROOT / "frontend" / "dist"
-if (FRONTEND_DIR / "assets").exists():
-    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIR / "assets")), name="static_assets")
+ASSETS_DIR = FRONTEND_DIR / "assets"
+if ASSETS_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR), check_dir=False), name="static_assets")
+elif FRONTEND_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIR), check_dir=False), name="static_assets")
 
 
 @app.get("/{full_path:path}", include_in_schema=False)
@@ -7607,6 +7609,13 @@ async def serve_spa(full_path: str = ""):
     # Do not intercept API, docs, openapi, or ws
     if full_path.startswith("api") or full_path.startswith("docs") or full_path.startswith("openapi.json"):
         raise HTTPException(status_code=404, detail="Not Found")
+    
+    # Handle /assets path if StaticFiles middleware missed it
+    if full_path.startswith("assets/"):
+        asset_file = FRONTEND_DIR / full_path
+        if asset_file.is_file():
+            return FileResponse(str(asset_file))
+            
     file_path = FRONTEND_DIR / full_path
     if full_path and file_path.is_file():
         return FileResponse(str(file_path))
