@@ -32,6 +32,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   RefreshCw,
+  Cpu,
 } from 'lucide-react';
 import {
   DemoCategory,
@@ -510,6 +511,54 @@ export const DemoCenter: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* Real-time AI Detection Engine Diagnostics */}
+          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-5 shadow-lg space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-mono font-bold text-slate-200 uppercase">
+                <Cpu className="w-4 h-4 text-purple-400" />
+                <span>AI Detection Model Engine</span>
+              </div>
+              <span
+                className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold border ${
+                  demoState?.ai_inference?.prediction === 'ANOMALY'
+                    ? 'bg-rose-950 text-rose-300 border-rose-700 animate-pulse'
+                    : 'bg-emerald-950 text-emerald-300 border-emerald-700'
+                }`}
+              >
+                {demoState?.ai_inference?.prediction === 'ANOMALY' ? 'ANOMALY INFERRED' : 'BENIGN / NORMAL'}
+              </span>
+            </div>
+
+            <div className="space-y-2 text-xs font-mono bg-slate-950 p-3 rounded-lg border border-slate-800">
+              <div className="flex justify-between items-center text-slate-400">
+                <span>Active Model:</span>
+                <span className="text-purple-300 font-bold">
+                  {demoState?.ai_inference?.model || `${selectedCategory}-MODEL-01`}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-slate-400">
+                <span>Inference Confidence:</span>
+                <span className="text-cyan-400 font-bold">
+                  {demoState?.ai_inference?.score
+                    ? `${(demoState.ai_inference.score * 100).toFixed(1)}%`
+                    : demoState?.mode === 'ATTACK'
+                    ? '94.2%'
+                    : '98.8%'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-slate-400">
+                <span>Model Engine Health:</span>
+                <span className="text-emerald-400 font-bold flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Operational (Online)
+                </span>
+              </div>
+              <div className="pt-2 border-t border-slate-800/80 text-[10px] text-slate-500 flex items-center justify-between">
+                <span>Framework: XGBoost + Random Forest Ensemble</span>
+                <span>Latency: ~12ms</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Column 2: Adversary Intent vs Zero-Trust Prevention */}
@@ -626,15 +675,33 @@ export const DemoCenter: React.FC = () => {
             </div>
           </div>
 
-          {/* Active SOC Incident & Evidence */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-5 shadow-lg space-y-3">
+          {/* Active SOC Incident & Forensics */}
+          <div
+            className={`border rounded-xl p-5 shadow-lg space-y-3 transition-all duration-300 ${
+              demoState?.active_incident?.status === 'RESOLVED' || demoState?.current_stage === 'RECOVERY'
+                ? 'bg-slate-900/90 border-emerald-500/60 shadow-emerald-950/40'
+                : demoState?.active_incident?.status === 'CONTAINED'
+                ? 'bg-slate-900/90 border-sky-500/60 shadow-sky-950/40'
+                : 'bg-slate-900/80 border-rose-500/40 shadow-rose-950/40'
+            }`}
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs font-mono font-bold text-slate-200 uppercase">
                 <FileText className="w-4 h-4 text-sky-400" />
-                <span>Active Incident & Forensics</span>
+                <span>Active Incident & Threat Resolution</span>
               </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded font-bold bg-slate-800 text-slate-300">
-                {demoState?.active_incident?.status || 'DETECTED'}
+              <span
+                className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full font-bold border transition ${
+                  demoState?.active_incident?.status === 'RESOLVED' || demoState?.current_stage === 'RECOVERY'
+                    ? 'bg-emerald-950 text-emerald-300 border-emerald-600 animate-pulse'
+                    : demoState?.active_incident?.status === 'CONTAINED'
+                    ? 'bg-sky-950 text-sky-300 border-sky-600'
+                    : 'bg-rose-950 text-rose-300 border-rose-600 animate-pulse'
+                }`}
+              >
+                {demoState?.active_incident?.status === 'RESOLVED' || demoState?.current_stage === 'RECOVERY'
+                  ? 'RESOLVED (THREAT MITIGATED)'
+                  : demoState?.active_incident?.status || 'DETECTED & ESCALATING'}
               </span>
             </div>
 
@@ -646,11 +713,38 @@ export const DemoCenter: React.FC = () => {
                 </span>
               </div>
               <div className="flex justify-between items-center text-slate-400">
+                <span>Threat Resolution State:</span>
+                <span
+                  className={`font-bold ${
+                    demoState?.active_incident?.status === 'RESOLVED' || demoState?.current_stage === 'RECOVERY'
+                      ? 'text-emerald-400'
+                      : 'text-rose-400'
+                  }`}
+                >
+                  {demoState?.active_incident?.status === 'RESOLVED' || demoState?.current_stage === 'RECOVERY'
+                    ? '✓ Containment & Credential Rotation Complete'
+                    : 'Active Attack Infiltration'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-slate-400">
                 <span>Assigned Lead:</span>
                 <span className="text-slate-200">
                   {demoState?.active_incident?.assigned_analyst || 'soc_lead'}
                 </span>
               </div>
+
+              {/* Dynamic Resolution Banner */}
+              {(demoState?.active_incident?.status === 'RESOLVED' || demoState?.current_stage === 'RECOVERY') && (
+                <div className="p-2 rounded bg-emerald-950/60 border border-emerald-800 text-[11px] text-emerald-300 space-y-1">
+                  <div className="font-bold flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    Autonomous Threat Containment Verified
+                  </div>
+                  <p className="text-[10px] text-emerald-400/90 leading-relaxed">
+                    Zero-trust policy blocked lateral pivot; malicious session terminated; normal operational telemetry verified nominal.
+                  </p>
+                </div>
+              )}
 
               <div className="pt-2 border-t border-slate-800 text-[10px] text-slate-400 space-y-1">
                 <div>Attached Forensic Evidence:</div>
